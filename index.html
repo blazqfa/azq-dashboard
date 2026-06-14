@@ -598,76 +598,113 @@
     <!-- UPLOAD PAGE -->
     <div class="page" id="page-upload">
       <div style="max-width:680px">
-        <div class="alert alert-warn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          En la versión online, los datos se actualizan directamente en <strong>Google Sheets</strong> — no es necesario subir Excel. Edita las hojas <em>Zonas, GLA, Ventas, Lineas y Config</em> en Sheets y recarga la página. Si quieres también puedes subir un Excel para actualizar datos localmente:
-          <br><br>
-          Hojas actuales del Excel SAP: <strong>4 hojas</strong>: <strong>Datos</strong>, <strong>Tabla</strong>, <strong>Sheet SAP</strong> y <strong>GLA</strong>. Cuando tengas terminado el maestro de ubicaciones, se añadirá como 5ª hoja (<strong>M. de ubicaciones</strong>). Los datos mostrados ahora son los del último Excel cargado.
+
+        <!-- FLUJO PRINCIPAL: Subir Excel SAP y sincronizar -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <div style="width:32px;height:32px;background:#1B4F91;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:14px;color:var(--text1)">Sincronizar datos SAP con el dashboard</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px">Sube el Excel exportado de SAP → se actualizan Google Sheets → todo el equipo ve los datos nuevos</div>
+            </div>
+          </div>
+
+          <!-- Pasos del flujo -->
+          <div style="display:flex;align-items:center;gap:0;margin-bottom:18px;font-size:11px;font-weight:600;color:var(--text3)">
+            <div style="display:flex;align-items:center;gap:6px"><div style="width:20px;height:20px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">1</div>Selecciona Excel SAP</div>
+            <div style="flex:1;height:1px;background:var(--border2);margin:0 8px"></div>
+            <div style="display:flex;align-items:center;gap:6px"><div style="width:20px;height:20px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">2</div>Extrae datos</div>
+            <div style="flex:1;height:1px;background:var(--border2);margin:0 8px"></div>
+            <div style="display:flex;align-items:center;gap:6px"><div style="width:20px;height:20px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">3</div>Actualiza Google Sheets</div>
+            <div style="flex:1;height:1px;background:var(--border2);margin:0 8px"></div>
+            <div style="display:flex;align-items:center;gap:6px"><div style="width:20px;height:20px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">4</div>Dashboard recargado</div>
+          </div>
+
+          <!-- Drop zone -->
+          <div class="upload-area" id="upload-area"
+               onclick="document.getElementById('file-input').click()"
+               ondragover="event.preventDefault();this.style.borderColor='#1B4F91'"
+               ondragleave="this.style.borderColor=''"
+               ondrop="event.preventDefault();this.style.borderColor='';handleFileDrop(event)">
+            <div class="upload-icon">📊</div>
+            <div class="upload-title">Subir Excel de SAP</div>
+            <div class="upload-sub">Haz clic o arrastra el archivo <strong>Actualización_de_datos_SAP_para_KPIs.xlsx</strong></div>
+            <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this)">
+          </div>
+
+          <!-- Barra de progreso -->
+          <div id="sync-progress" style="display:none;margin-top:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span id="sync-status-text" style="font-size:12px;font-weight:600;color:var(--text2)">Procesando...</span>
+              <span id="sync-pct" style="font-size:12px;color:var(--text3)">0%</span>
+            </div>
+            <div style="height:6px;background:var(--border2);border-radius:3px;overflow:hidden">
+              <div id="sync-bar" style="height:100%;background:#1B4F91;width:0%;border-radius:3px;transition:width .3s ease"></div>
+            </div>
+          </div>
+
+          <!-- Resultado de la sincronización -->
+          <div id="sync-result" style="display:none;margin-top:14px;padding:12px 14px;border-radius:8px;font-size:12px;font-weight:600"></div>
+
+          <!-- Resumen de datos extraídos -->
+          <div id="sync-summary" style="display:none;margin-top:14px">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Datos extraídos del Excel</div>
+            <div id="sync-summary-content" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px"></div>
+          </div>
         </div>
 
-        <div class="upload-area" id="upload-area" onclick="document.getElementById('file-input').click()">
-          <div class="upload-icon">📊</div>
-          <div class="upload-title">Subir Excel de SAP</div>
-          <div class="upload-sub">Haz clic o arrastra el archivo GESTIÓN_STOCK.xlsx aquí</div>
-          <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this)">
-        </div>
-
-        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:20px 0 8px">Hojas actuales (4)</div>
+        <!-- Hojas que se leen del Excel -->
+        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px">Hojas que se leen del Excel SAP</div>
         <div class="upload-fields" id="upload-fields">
-          <div class="upload-field" id="field-datos">
-            <div class="fname">📋 Hoja Datos</div>
-            <div class="fdesc">Resumen de ocupación por zona — Tipo de stock, stock actual y capacidad</div>
-          </div>
-          <div class="upload-field" id="field-tabla">
-            <div class="fname">📊 Hoja Tabla</div>
-            <div class="fdesc">Tablas dinámicas por tipo de stock (GW F1, GW Bloq, Provisional, Embalaje…)</div>
-          </div>
           <div class="upload-field" id="field-sap">
-            <div class="fname">🏭 Hoja Sheet SAP</div>
-            <div class="fdesc">Inventario físico SAP — columnas clave: B, J, T, U, V, AX, AY, AZ, BA, BB</div>
+            <div class="fname">🏭 Sheet SAP</div>
+            <div class="fdesc">Inventario físico — columna "Tipo de stock" (GW/BTY/BLOQ/EMBALAJE/AG Y RF) y "Cantidad de Pl"</div>
           </div>
           <div class="upload-field" id="field-gla">
-            <div class="fname">📍 Hoja GLA</div>
-            <div class="fdesc">Almacén externo — col. B: códigos, I: cantidad pz, J: cantidad pallets</div>
+            <div class="fname">📍 GLA</div>
+            <div class="fdesc">Almacén externo — código, descripción, pallets y unidades por referencia</div>
           </div>
-        </div>
-
-        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:20px 0 8px">Hoja pendiente (disponible próximamente)</div>
-        <div style="display:grid;grid-template-columns:1fr;gap:10px">
-          <div class="upload-field" id="field-ubicaciones" style="border-style:dashed;opacity:.65">
+          <div class="upload-field" id="field-datos">
+            <div class="fname">📋 Datos (opcional)</div>
+            <div class="fdesc">Resumen de ocupación por zona si está presente</div>
+          </div>
+          <div class="upload-field" id="field-ubicaciones" style="border-style:dashed;opacity:.6">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div class="fname">🗺️ M. de ubicaciones</div>
               <span style="font-size:10px;background:#F0EEE8;color:var(--text3);padding:2px 8px;border-radius:12px;font-weight:600">PENDIENTE</span>
             </div>
-            <div class="fdesc">Maestro de ubicaciones del almacén — cuando esté disponible, permitirá el cálculo de KPI de ocupación por pasillo, columna y nivel</div>
+            <div class="fdesc">Cuando esté disponible en SAP se detectará automáticamente</div>
           </div>
         </div>
 
+        <!-- Configuración de capacidades -->
         <div style="margin-top:20px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
-          <div class="section-title" style="margin-bottom:10px">Configuración de capacidades</div>
+          <div class="section-title" style="margin-bottom:10px">Configuración de capacidades (pallets)</div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">
             <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Glassware (pl)</label>
+              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Glassware</label>
               <input type="number" id="cap-gw" value="7573" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
             </div>
             <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Prov-Bloq GW (pl)</label>
+              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Prov-Bloq GW</label>
               <input type="number" id="cap-bloq" value="6145" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
             </div>
             <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Beauty (pl)</label>
+              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Beauty</label>
               <input type="number" id="cap-bty" value="5338" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
             </div>
             <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. After Glass / RF (pl)</label>
+              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. After Glass / RF</label>
               <input type="number" id="cap-ag" value="3342" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
             </div>
             <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Embalaje (pl)</label>
+              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Embalaje</label>
               <input type="number" id="cap-emb" value="4030" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
             </div>
             <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. GLA externo (pl)</label>
+              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. GLA externo</label>
               <input type="number" id="cap-gla" value="1500" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
             </div>
           </div>
@@ -1165,121 +1202,221 @@ function switchTab(el, tabId) {
 }
 
 // ===== UPLOAD =====
+function handleFileDrop(event) {
+  const file = event.dataTransfer.files[0];
+  if(!file) return;
+  processSAPFile(file);
+}
+
 function handleFile(input) {
   const file = input.files[0];
   if(!file) return;
+  processSAPFile(file);
+}
+
+// ============================================================
+// FLUJO PRINCIPAL: Lee el Excel SAP → extrae datos → envía a Google Sheets → refresca
+// ============================================================
+function processSAPFile(file) {
+  setSyncProgress(5, 'Leyendo archivo Excel...');
+  document.getElementById('sync-progress').style.display = 'block';
+  document.getElementById('sync-result').style.display = 'none';
+  document.getElementById('sync-summary').style.display = 'none';
+
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
+      setSyncProgress(15, 'Parseando hojas...');
       const wb = XLSX.read(e.target.result, {type:'binary'});
-      parseWorkbook(wb, file.name);
+      const sheets = wb.SheetNames;
+      const extracted = { zonas: {}, gla: [], hasGLA: false, hasSAP: false, hasDatos: false };
+
+      // --- Hoja "Sheet SAP" (principal para zonas) ---
+      if(sheets.includes('Sheet SAP')) {
+        setSyncProgress(30, 'Extrayendo stock por zona (Sheet SAP)...');
+        const ws = wb.Sheets['Sheet SAP'];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+        // Mapeo "Tipo de stock" (última columna visible) → zona_id
+        const tipoMap = {
+          'GW': 'gw', 'BTY': 'bty', 'BLOQ': 'bloq',
+          'PROV - BLOQ (GW)': 'bloq', 'EMBALAJE': 'emb',
+          'AG Y RF': 'ag', 'AFTER GLASS Y RF': 'ag'
+        };
+        const zonaStock = {gw:0, bty:0, bloq:0, emb:0, ag:0};
+
+        // Buscar columnas de índice para "Cantidad de Pl" y "Tipo de stock"
+        // En el archivo real: col AX = índice 49 (Cantidad de Pl), última col = Tipo de stock
+        let colPl = -1, colTipo = -1;
+        if(rows.length > 0) {
+          const header = rows[0].map(h => h.toString().trim());
+          colPl = header.findIndex(h => h === 'Cantidad de Pl');
+          colTipo = header.findLastIndex(h => h === 'Tipo de stock' || h.toLowerCase().includes('tipo de stock'));
+          // Fallback: columna AX = 49, última col = tipo de stock
+          if(colPl < 0) colPl = 49;
+          if(colTipo < 0) colTipo = header.length - 1;
+        }
+
+        rows.slice(1).forEach(row => {
+          const tipo = (row[colTipo]||'').toString().trim().toUpperCase();
+          const pl = parseFloat(row[colPl]) || 0;
+          if(pl > 0 && tipoMap[tipo]) {
+            zonaStock[tipoMap[tipo]] = (zonaStock[tipoMap[tipo]] || 0) + pl;
+          }
+        });
+
+        // Redondear y guardar
+        Object.keys(zonaStock).forEach(id => {
+          zonaStock[id] = Math.round(zonaStock[id]);
+        });
+        extracted.zonas = zonaStock;
+        extracted.hasSAP = true;
+        document.getElementById('field-sap').classList.add('filled');
+      }
+
+      // --- Hoja "Datos" (alternativa para zonas) ---
+      if(sheets.includes('Datos') && !extracted.hasSAP) {
+        setSyncProgress(35, 'Extrayendo stock (hoja Datos)...');
+        const ws = wb.Sheets['Datos'];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        const zoneMap = {
+          'GLASSWARE':'gw','PROV - BLOQ (GW)':'bloq',
+          'BEAUTY':'bty','AFTER GLASS Y REPRESENTANTE FISCAL':'ag','EMBALAJE':'emb'
+        };
+        if(!extracted.zonas || Object.keys(extracted.zonas).length === 0) extracted.zonas = {};
+        rows.forEach(row => {
+          const tipo = (row[1]||'').toString().trim().toUpperCase();
+          const stock = parseFloat(row[2])||0;
+          if(zoneMap[tipo] && stock > 0) extracted.zonas[zoneMap[tipo]] = Math.round(stock);
+        });
+        extracted.hasDatos = true;
+        document.getElementById('field-datos').classList.add('filled');
+      }
+
+      // --- Hoja "GLA" ---
+      if(sheets.includes('GLA')) {
+        setSyncProgress(50, 'Extrayendo almacén externo (GLA)...');
+        const ws = wb.Sheets['GLA'];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        rows.slice(1).forEach(row => {
+          // Col B (1)=material, C (2)=desc, I (8)=libre utilización (unidades), J (9)=Qty de Pl
+          const code = (row[1]||'').toString().trim();
+          const desc = (row[2]||'').toString().trim();
+          const pz = Math.round(parseFloat(row[8])||0);
+          const pl = Math.round(parseFloat(row[9])||0);
+          if(code && pl > 0) extracted.gla.push({codigo: code, descripcion: desc, pallets: pl, unidades: pz});
+        });
+        extracted.hasGLA = true;
+        document.getElementById('field-gla').classList.add('filled');
+      }
+
+      // Maestro de ubicaciones (futuro)
+      if(sheets.includes('M. de ubicaciones')) {
+        const el = document.getElementById('field-ubicaciones');
+        if(el) { el.classList.add('filled'); el.style.opacity='1'; el.style.borderStyle='solid'; }
+      }
+
+      // --- Actualizar state local inmediatamente ---
+      setSyncProgress(60, 'Actualizando dashboard local...');
+      if(extracted.zonas && Object.keys(extracted.zonas).length > 0) {
+        state.zones.forEach(z => {
+          if(extracted.zonas[z.id] !== undefined) z.stock = extracted.zonas[z.id];
+        });
+      }
+      if(extracted.gla.length > 0) {
+        state.gla = extracted.gla.map(g => ({code: g.codigo, desc: g.descripcion, pz: g.unidades, pl: g.pallets}));
+      }
+      state.lastUpdate = new Date();
+      state.lastUpdate._filename = file.name;
+      updateLastUpdate();
+      renderAll();
+      fvAlertasLeidas = false;
+      if(typeof fvDetectarDesviaciones === 'function') fvDetectarDesviaciones();
+
+      // Mostrar resumen antes de enviar
+      mostrarResumenSAP(extracted, file.name);
+
+      // --- Enviar a Google Sheets via Apps Script ---
+      setSyncProgress(75, 'Sincronizando con Google Sheets...');
+      const payload = {
+        action: 'updateFromSAP',
+        timestamp: new Date().toISOString(),
+        zonas: state.zones.map(z => ({ zona_id: z.id, stock: z.stock })),
+        gla: extracted.gla
+      };
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if(data.ok !== false) {
+          setSyncProgress(100, '¡Sincronización completada!');
+          mostrarResultadoSync(true, `Google Sheets actualizado correctamente. Todos los usuarios verán los datos nuevos al recargar.`);
+        } else {
+          throw new Error(data.error || 'Error desconocido del servidor');
+        }
+      } catch(syncErr) {
+        setSyncProgress(100, 'Dashboard actualizado (sin conexión a Sheets)');
+        mostrarResultadoSync(false, `El dashboard local se ha actualizado correctamente, pero no se pudo sincronizar con Google Sheets: ${syncErr.message}. Verifica que el Apps Script esté desplegado con la versión v3.`);
+      }
+
     } catch(err) {
-      alert('Error al leer el archivo: ' + err.message);
+      setSyncProgress(0, 'Error');
+      mostrarResultadoSync(false, 'Error al procesar el archivo: ' + err.message);
+      document.getElementById('sync-progress').style.display = 'none';
     }
   };
   reader.readAsBinaryString(file);
 }
 
-function parseWorkbook(wb, filename) {
-  const sheets = wb.SheetNames;
-  let parsed = {datos:false, tabla:false, sap:false, gla:false, ubicaciones:false};
+function setSyncProgress(pct, text) {
+  document.getElementById('sync-bar').style.width = pct + '%';
+  document.getElementById('sync-pct').textContent = pct + '%';
+  document.getElementById('sync-status-text').textContent = text;
+}
 
-  // Parse Datos sheet
-  if(sheets.includes('Datos')) {
-    const ws = wb.Sheets['Datos'];
-    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-    const zoneMap = {
-      'GLASSWARE': 'gw', 'PROV - BLOQ (GW)': 'bloq',
-      'BEAUTY': 'bty', 'AFTER GLASS Y REPRESENTANTE FISCAL': 'ag', 'EMBALAJE': 'emb'
-    };
-    rows.forEach(row => {
-      const tipo = (row[1]||'').toString().trim().toUpperCase();
-      const stock = parseFloat(row[2])||0;
-      if(zoneMap[tipo] && stock > 0) {
-        const id = zoneMap[tipo];
-        const z = state.zones.find(z=>z.id===id);
-        if(z) z.stock = Math.round(stock);
-      }
-    });
-    parsed.datos = true;
-    document.getElementById('field-datos').classList.add('filled');
-  }
+function mostrarResultadoSync(success, msg) {
+  const el = document.getElementById('sync-result');
+  el.style.display = 'block';
+  el.style.background = success ? '#EDF7ED' : '#FFF3CD';
+  el.style.color = success ? '#1E6B1E' : '#7A5800';
+  el.style.border = `1px solid ${success ? '#8BC98B' : '#F0C040'}`;
+  el.innerHTML = (success ? '✅ ' : '⚠️ ') + msg;
+}
 
-  // Parse GLA sheet
-  if(sheets.includes('GLA')) {
-    const ws = wb.Sheets['GLA'];
-    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-    const newGla = [];
-    rows.slice(1).forEach(row => {
-      const code = (row[1]||'').toString().trim();
-      const desc = (row[2]||'').toString().trim();
-      const pz = parseFloat(row[7])||0;
-      const pzPerPl = parseFloat(row[8])||1;
-      const pl = parseFloat(row[9])||0;
-      if(code && pl > 0) newGla.push({code, desc, pz: Math.round(pz), pl: Math.round(pl)});
-    });
-    if(newGla.length > 0) state.gla = newGla;
-    parsed.gla = true;
-    document.getElementById('field-gla').classList.add('filled');
-  }
-
-  // Parse Tabla sheet for GW breakdown
-  if(sheets.includes('Tabla')) {
-    const ws = wb.Sheets['Tabla'];
-    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-    // Try to extract GW F1 breakdown
-    let inGWF1 = false, newBD = [];
-    rows.forEach(row => {
-      const cell0 = (row[0]||'').toString().trim();
-      if(cell0 === 'GW BUENO F1') inGWF1 = true;
-      if(inGWF1 && cell0 && row[2] && !['Total general','GW BUENO F1'].includes(cell0)) {
-        newBD.push({tipo: cell0, pl: Math.round(parseFloat(row[2])||0), tag: cell0.includes('OBSOLETO')?'⚠️ Revisar':'GW Bueno'});
-      }
-      if(inGWF1 && cell0 === 'Total general') inGWF1 = false;
-    });
-    if(newBD.length > 0) {
-      // merge with bloq data if possible
-      state.gwBreakdown = state.gwBreakdown; // keep defaults, updating is complex
-    }
-    parsed.tabla = true;
-    document.getElementById('field-tabla').classList.add('filled');
-  }
-
-  // Detect M. de ubicaciones (future sheet — mark as ready when present)
-  if(sheets.includes('M. de ubicaciones')) {
-    parsed.ubicaciones = true;
-    const el = document.getElementById('field-ubicaciones');
-    if(el) {
-      el.classList.add('filled');
-      el.style.opacity = '1';
-      el.style.borderStyle = 'solid';
-      el.querySelector('.fname').textContent = '🗺️ M. de ubicaciones ✓';
-      el.querySelector('[style*="PENDIENTE"]') && (el.querySelector('[style*="PENDIENTE"]').textContent = 'CARGADO');
-    }
-  }
-
-  state.lastUpdate = new Date();
-  state.lastUpdate._filename = filename;
-  updateLastUpdate();
-  renderAll();
-  showPage('overview');
-  // Nuevos datos = alertas vuelven a ser "no leídas"
-  fvAlertasLeidas = false;
-  // After loading new data, re-run deviation detection if FV was initialized
-  if(typeof fvDetectarDesviaciones === 'function') {
-    // Update FV stock from new state total
-    // stockIni calculado dinámicamente por getter (solo zonas marcadas)
-    FV._capAZQ = state.zones.reduce((s,z)=>s+cap(z.id),0);
-    // If fab page visible, re-render; otherwise just detect and badge
-    if(document.getElementById('page-fabventa').classList.contains('active')) {
-      renderFabVentas();
-    } else {
-      fvDetectarDesviaciones();
-    }
-  }
-  const totalParsed = Object.values(parsed).filter(Boolean).length;
-  const sheetList = [parsed.datos&&'Datos', parsed.tabla&&'Tabla', parsed.sap&&'Sheet SAP', parsed.gla&&'GLA', parsed.ubicaciones&&'M. de ubicaciones'].filter(Boolean).join(', ');
-  alert(`✅ Datos cargados correctamente desde "${filename}".\n\nHojas procesadas (${totalParsed}): ${sheetList||'—'}`);
+function mostrarResumenSAP(extracted, filename) {
+  const zonas = extracted.zonas || {};
+  const totalZonas = Object.values(zonas).reduce((a,b) => a+b, 0);
+  const totalGLA = extracted.gla.reduce((s,g) => s+g.pallets, 0);
+  
+  const content = document.getElementById('sync-summary-content');
+  content.innerHTML = `
+    <div style="background:var(--surface2,#f8f6f1);border-radius:8px;padding:10px">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Archivo</div>
+      <div style="font-weight:600;color:var(--text1)">${filename}</div>
+    </div>
+    <div style="background:var(--surface2,#f8f6f1);border-radius:8px;padding:10px">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Total AZQ extraído</div>
+      <div style="font-weight:700;color:#1B4F91;font-size:16px">${fmt(totalZonas)} pl</div>
+    </div>
+    ${Object.entries(zonas).map(([id,pl]) => {
+      const z = state.zones.find(z=>z.id===id);
+      return `<div style="background:var(--surface2,#f8f6f1);border-radius:8px;padding:10px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:2px">${z?z.name:id}</div>
+        <div style="font-weight:600">${fmt(pl)} pl</div>
+      </div>`;
+    }).join('')}
+    <div style="background:var(--surface2,#f8f6f1);border-radius:8px;padding:10px">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">GLA externo</div>
+      <div style="font-weight:700;color:#1B4F91;font-size:16px">${fmt(totalGLA)} pl</div>
+      <div style="font-size:11px;color:var(--text3)">${extracted.gla.length} referencias</div>
+    </div>
+  `;
+  document.getElementById('sync-summary').style.display = 'block';
 }
 
 function updateCapacities() {
