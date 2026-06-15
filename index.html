@@ -660,7 +660,7 @@
         <div class="upload-fields" id="upload-fields">
           <div class="upload-field" id="field-sap">
             <div class="fname">🏭 Sheet SAP</div>
-            <div class="fdesc">Inventario físico — columna "Tipo de stock" (GW/BTY/BLOQ/EMBALAJE/AG Y RF) y "Cantidad de Pl"</div>
+            <div class="fdesc">Inventario físico — columna "Tipo de stock" (GW/BTY/EMBALAJE/AG Y RF) y "Cantidad de Pl". Prov-Bloq se pone a 0 si no aparece como zona independiente.</div>
           </div>
           <div class="upload-field" id="field-gla">
             <div class="fname">📍 GLA</div>
@@ -1293,19 +1293,30 @@ function processSAPFile(file) {
         document.getElementById('field-datos').classList.add('filled');
       }
 
-      // --- Hoja "GLA" ---
+      // --- Hoja "GLA" — agrupar por código de material ---
       if(sheets.includes('GLA')) {
         setSyncProgress(50, 'Extrayendo almacén externo (GLA)...');
         const ws = wb.Sheets['GLA'];
         const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        // Acumular por código: Col B(1)=material, C(2)=desc, H(7)=libre utilización (pz), J(9)=Qty de Pl
+        const glaMap = {}; // codigo -> {desc, pallets, unidades}
         rows.slice(1).forEach(row => {
-          // Col B (1)=material, C (2)=desc, I (8)=libre utilización (unidades), J (9)=Qty de Pl
           const code = (row[1]||'').toString().trim();
           const desc = (row[2]||'').toString().trim();
-          const pz = Math.round(parseFloat(row[8])||0);
-          const pl = Math.round(parseFloat(row[9])||0);
-          if(code && pl > 0) extracted.gla.push({codigo: code, descripcion: desc, pallets: pl, unidades: pz});
+          const pz   = parseFloat(row[7]) || 0;  // col H = Libre utilización (unidades)
+          const pl   = parseFloat(row[9]) || 0;  // col J = Qty de Pl
+          if(!code || pl <= 0) return;
+          if(!glaMap[code]) glaMap[code] = { descripcion: desc, pallets: 0, unidades: 0 };
+          glaMap[code].pallets   += pl;
+          glaMap[code].unidades  += pz;
         });
+        // Convertir a array, redondear pallets
+        extracted.gla = Object.entries(glaMap).map(([codigo, v]) => ({
+          codigo,
+          descripcion: v.descripcion,
+          pallets:  Math.round(v.pallets),
+          unidades: Math.round(v.unidades)
+        }));
         extracted.hasGLA = true;
         document.getElementById('field-gla').classList.add('filled');
       }
