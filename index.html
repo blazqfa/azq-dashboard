@@ -1271,7 +1271,7 @@ function processSAPFile(file) {
         });
         extracted.zonas = zonaStock;
         extracted.hasSAP = true;
-        document.getElementById('field-sap').classList.add('filled');
+        document.getElementById('field-sap')?.classList.add('filled');
       }
 
       // --- Hoja "Datos" (alternativa para zonas) ---
@@ -1290,7 +1290,7 @@ function processSAPFile(file) {
           if(zoneMap[tipo] && stock > 0) extracted.zonas[zoneMap[tipo]] = Math.round(stock);
         });
         extracted.hasDatos = true;
-        document.getElementById('field-datos').classList.add('filled');
+        document.getElementById('field-datos')?.classList.add('filled');
       }
 
       // --- Hoja "GLA" — agrupar por código de material ---
@@ -1318,7 +1318,7 @@ function processSAPFile(file) {
           unidades: Math.round(v.unidades)
         }));
         extracted.hasGLA = true;
-        document.getElementById('field-gla').classList.add('filled');
+        document.getElementById('field-gla')?.classList.add('filled');
       }
 
       // Maestro de ubicaciones (futuro)
