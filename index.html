@@ -2301,7 +2301,7 @@ async function fetchAndInit() {
     const json = await res.json();
     if(!json.ok) throw new Error(json.error || 'Error en la API');
 
-    const d = json.data;
+    const d = json.data || json; // Apps Script puede devolver datos en root o en .data
 
     progress(60, 'Cargando zonas AZQ...');
     // Map API data → state
