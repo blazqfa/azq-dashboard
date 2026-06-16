@@ -2306,16 +2306,18 @@ async function fetchAndInit() {
     progress(60, 'Cargando zonas AZQ...');
     // Map API data → state
     if(d.zonas && d.zonas.length) {
-      state.zones = d.zonas.map(z => ({
-        id:    z.zona_id || z.id,
-        name:  z.nombre  || z.name,
-        color: z.color,
-        stock: z.stock || 0,
-        textColor: '#333'
-      }));
+      state.zones = d.zonas
+        .filter(z => (z.zona_id || z.id) && (z.nombre || z.name))
+        .map(z => ({
+          id:    z.zona_id || z.id,
+          name:  z.nombre  || z.name,
+          color: z.color,
+          stock: z.stock || 0,
+          textColor: '#333'
+        }));
       d.zonas.forEach(z => {
         const id = z.zona_id || z.id;
-        if(state.caps[id] !== undefined) state.caps[id] = z.capacidad || z.capacidad || 0;
+        if(id && state.caps[id] !== undefined) state.caps[id] = z.capacidad || 0;
       });
     }
 
