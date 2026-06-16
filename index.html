@@ -1399,19 +1399,7 @@ function updateLastUpdate() {
   }
 }
 
-// Drag and drop
-const uploadArea = document.getElementById('upload-area');
-uploadArea.addEventListener('dragover', e=>{e.preventDefault();uploadArea.classList.add('drag-over');});
-uploadArea.addEventListener('dragleave', ()=>uploadArea.classList.remove('drag-over'));
-uploadArea.addEventListener('drop', e=>{
-  e.preventDefault(); uploadArea.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if(file && (file.name.endsWith('.xlsx')||file.name.endsWith('.xls'))) {
-    const input = document.getElementById('file-input');
-    const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
-    handleFile(input);
-  } else alert('Por favor sube un archivo .xlsx');
-});
+// ===== SIDEBAR COLLAPSE =====
 
 // ===== EXPORT =====
 function exportToExcel() {
