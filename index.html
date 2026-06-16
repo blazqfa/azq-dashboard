@@ -2371,12 +2371,12 @@ async function fetchAndInit() {
 
   try {
     // Check if API_URL is configured
-    if(!API_URL || API_URL === 'https://script.google.com/macros/s/AKfycbx7K5iGcjcSmzhuKUXjzvVe5ObgRZDG0f5RjnF-JhQyKTylYCDqmwKOsVp0aOVv-D1Qjw/exec') {
+    if(!API_URL) {
       // Offline mode: use default demo data
       progress(100, 'Modo demo (sin API configurada)');
       setTimeout(() => {
-        overlay.classList.add('hidden');
-        setTimeout(() => overlay.remove(), 500);
+        overlay?.classList.add('hidden');
+        setTimeout(() => overlay?.remove(), 500);
       }, 800);
       renderAll();
       return;
@@ -2460,14 +2460,14 @@ async function fetchAndInit() {
 
     progress(100, '¡Listo!');
     setTimeout(() => {
-      overlay.classList.add('hidden');
-      setTimeout(() => overlay.remove(), 500);
+      overlay?.classList.add('hidden');
+      setTimeout(() => overlay?.remove(), 500);
     }, 400);
 
   } catch(err) {
     // Show error in overlay
     const overlay = document.getElementById('loading-overlay');
-    overlay.innerHTML = `<div class="api-error">
+    overlay?.innerHTML = `<div class="api-error">
       <h3>⚠️ Error al conectar con la API</h3>
       <p>${err.message}</p>
       <p style="margin-top:8px">Comprueba que la URL del Apps Script es correcta y está publicada como "Anyone".</p>
