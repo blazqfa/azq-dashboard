@@ -2448,7 +2448,6 @@ async function fetchAndInit() {
       const ua = d.config['ultima_actualizacion'];
       const el = document.getElementById('config-last-update');
       if(el && ua) el.textContent = '⏱ Última actualización SAP: ' + ua;
-    }
       if(d.config.ppp_beauty)  FV_PARAMS.pppBty  = Number(d.config.ppp_beauty);
       if(d.config.ppp_gw)      FV_PARAMS.pppOpal = Number(d.config.ppp_gw);
       if(d.config.tph_beauty)  FV_PARAMS.tphBty  = Number(d.config.tph_beauty);
