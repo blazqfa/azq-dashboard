@@ -292,9 +292,9 @@
         Fabricación vs Ventas
       </div>
       <div class="nav-section" style="margin-top:12px">Configuración</div>
-      <div class="nav-item" onclick="showPage('upload')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Actualizar datos
+      <div class="nav-item" onclick="fetchAndInit()" style="cursor:pointer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Recargar datos
       </div>
     </nav>
     <div class="sidebar-footer" id="sidebar-date">Datos: —</div>
@@ -310,7 +310,7 @@
       </div>
       <div class="topbar-right">
         <span class="last-update" id="last-update-label">Sin datos cargados</span>
-        <button class="btn" onclick="location.reload()" title="Recargar datos desde Google Sheets" style="color:#1B4F91;border-color:#1B4F91">
+        <button class="btn" onclick="fetchAndInit()" title="Recargar datos desde Google Sheets" style="color:#1B4F91;border-color:#1B4F91">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           Actualizar
         </button>
@@ -321,10 +321,6 @@
         <button class="btn" onclick="exportToExcel()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Exportar Excel
-        </button>
-        <button class="btn btn-primary" onclick="showPage('upload')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Actualizar
         </button>
       </div>
     </div>
@@ -597,119 +593,65 @@
 
     <!-- UPLOAD PAGE -->
     <div class="page" id="page-upload">
-      <div style="max-width:680px">
+      <div style="max-width:600px">
 
-        <!-- FLUJO PRINCIPAL: Subir Excel SAP y sincronizar -->
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-            <div style="width:32px;height:32px;background:#1B4F91;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-            </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+            <div style="width:40px;height:40px;background:#1B4F91;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">🏭</div>
             <div>
-              <div style="font-weight:700;font-size:14px;color:var(--text1)">Sincronizar datos SAP con el dashboard</div>
-              <div style="font-size:12px;color:var(--text3);margin-top:2px">Sube el Excel exportado de SAP → se actualizan Google Sheets → todo el equipo ve los datos nuevos</div>
+              <div style="font-weight:700;font-size:15px;color:var(--text1)">Cómo actualizar los datos</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px">El dashboard se alimenta de Google Sheets vía Apps Script</div>
             </div>
           </div>
 
-          <!-- Pasos del flujo -->
-          <div style="display:flex;align-items:center;gap:0;margin-bottom:18px;font-size:11px;font-weight:600;color:var(--text3)">
-            <div style="display:flex;align-items:center;gap:6px"><div style="width:20px;height:20px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">1</div>Selecciona Excel SAP</div>
-            <div style="flex:1;height:1px;background:var(--border2);margin:0 8px"></div>
-            <div style="display:flex;align-items:center;gap:6px"><div style="width:20px;height:20px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">2</div>Extrae datos</div>
-            <div style="flex:1;height:1px;background:var(--border2);margin:0 8px"></div>
-            <div style="display:flex;align-items:center;gap:6px"><div style="width:20px;height:20px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">3</div>Actualiza Google Sheets</div>
-            <div style="flex:1;height:1px;background:var(--border2);margin:0 8px"></div>
-            <div style="display:flex;align-items:center;gap:6px"><div style="width:20px;height:20px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">4</div>Dashboard recargado</div>
-          </div>
-
-          <!-- Drop zone -->
-          <div class="upload-area" id="upload-area"
-               onclick="document.getElementById('file-input').click()"
-               ondragover="event.preventDefault();this.style.borderColor='#1B4F91'"
-               ondragleave="this.style.borderColor=''"
-               ondrop="event.preventDefault();this.style.borderColor='';handleFileDrop(event)">
-            <div class="upload-icon">📊</div>
-            <div class="upload-title">Subir Excel de SAP</div>
-            <div class="upload-sub">Haz clic o arrastra el archivo <strong>Actualización_de_datos_SAP_para_KPIs.xlsx</strong></div>
-            <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(this)">
-          </div>
-
-          <!-- Barra de progreso -->
-          <div id="sync-progress" style="display:none;margin-top:14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <span id="sync-status-text" style="font-size:12px;font-weight:600;color:var(--text2)">Procesando...</span>
-              <span id="sync-pct" style="font-size:12px;color:var(--text3)">0%</span>
+          <!-- Pasos -->
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="width:28px;height:28px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">1</div>
+              <div>
+                <div style="font-weight:600;font-size:13px;color:var(--text1)">Exporta el Excel de SAP</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:2px">Descarga el archivo <strong>Actualización_de_datos_SAP_para_KPIs.xlsx</strong> de SAP como siempre</div>
+              </div>
             </div>
-            <div style="height:6px;background:var(--border2);border-radius:3px;overflow:hidden">
-              <div id="sync-bar" style="height:100%;background:#1B4F91;width:0%;border-radius:3px;transition:width .3s ease"></div>
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="width:28px;height:28px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">2</div>
+              <div>
+                <div style="font-weight:600;font-size:13px;color:var(--text1)">Súbelo a Google Drive</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:2px">Abre <strong>drive.google.com</strong> → arrastra el archivo. Si ya existe uno anterior con el mismo nombre, reemplázalo.</div>
+              </div>
             </div>
-          </div>
-
-          <!-- Resultado de la sincronización -->
-          <div id="sync-result" style="display:none;margin-top:14px;padding:12px 14px;border-radius:8px;font-size:12px;font-weight:600"></div>
-
-          <!-- Resumen de datos extraídos -->
-          <div id="sync-summary" style="display:none;margin-top:14px">
-            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Datos extraídos del Excel</div>
-            <div id="sync-summary-content" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px"></div>
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="width:28px;height:28px;background:#1B4F91;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">3</div>
+              <div>
+                <div style="font-weight:600;font-size:13px;color:var(--text1)">Ejecuta el script en Google Sheets</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:2px">Abre <strong>AZQ_Dashboard_Data</strong> → menú <strong>🏭 AZQ Dashboard → 📥 Actualizar desde Excel SAP</strong></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="width:28px;height:28px;background:#97C459;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">4</div>
+              <div>
+                <div style="font-weight:600;font-size:13px;color:var(--text1)">El dashboard se actualiza solo</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:2px">Pulsa el botón <strong>"Actualizar"</strong> arriba a la derecha o recarga la página. Todos los usuarios verán los datos nuevos.</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Hojas que se leen del Excel -->
-        <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px">Hojas que se leen del Excel SAP</div>
-        <div class="upload-fields" id="upload-fields">
-          <div class="upload-field" id="field-sap">
-            <div class="fname">🏭 Sheet SAP</div>
-            <div class="fdesc">Inventario físico — columna "Tipo de stock" (GW/BTY/EMBALAJE/AG Y RF) y "Cantidad de Pl". Prov-Bloq se pone a 0 si no aparece como zona independiente.</div>
+        <!-- Botón recargar -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-weight:600;font-size:13px;color:var(--text1)">Recargar datos ahora</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px">Actualiza el dashboard con los últimos datos de Google Sheets</div>
           </div>
-          <div class="upload-field" id="field-gla">
-            <div class="fname">📍 GLA</div>
-            <div class="fdesc">Almacén externo — código, descripción, pallets y unidades por referencia</div>
-          </div>
-          <div class="upload-field" id="field-datos">
-            <div class="fname">📋 Datos (opcional)</div>
-            <div class="fdesc">Resumen de ocupación por zona si está presente</div>
-          </div>
-          <div class="upload-field" id="field-ubicaciones" style="border-style:dashed;opacity:.6">
-            <div style="display:flex;align-items:center;justify-content:space-between">
-              <div class="fname">🗺️ M. de ubicaciones</div>
-              <span style="font-size:10px;background:#F0EEE8;color:var(--text3);padding:2px 8px;border-radius:12px;font-weight:600">PENDIENTE</span>
-            </div>
-            <div class="fdesc">Cuando esté disponible en SAP se detectará automáticamente</div>
-          </div>
+          <button class="btn btn-primary" onclick="fetchAndInit().then(()=>showPage('overview'))">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Recargar
+          </button>
         </div>
 
-        <!-- Configuración de capacidades -->
-        <div style="margin-top:20px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
-          <div class="section-title" style="margin-bottom:10px">Configuración de capacidades (pallets)</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">
-            <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Glassware</label>
-              <input type="number" id="cap-gw" value="7573" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
-            </div>
-            <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Prov-Bloq GW</label>
-              <input type="number" id="cap-bloq" value="6145" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
-            </div>
-            <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Beauty</label>
-              <input type="number" id="cap-bty" value="5338" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
-            </div>
-            <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. After Glass / RF</label>
-              <input type="number" id="cap-ag" value="3342" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
-            </div>
-            <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. Embalaje</label>
-              <input type="number" id="cap-emb" value="4030" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
-            </div>
-            <div>
-              <label style="color:var(--text3);display:block;margin-bottom:4px">Cap. GLA externo</label>
-              <input type="number" id="cap-gla" value="1500" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px">
-            </div>
-          </div>
-          <button class="btn btn-primary" onclick="updateCapacities()" style="margin-top:12px">Aplicar capacidades</button>
-        </div>
+        <!-- Última actualización -->
+        <div style="margin-top:12px;font-size:11px;color:var(--text3);text-align:center" id="config-last-update"></div>
+
       </div>
     </div>
   </main>
@@ -2472,10 +2414,15 @@ async function fetchAndInit() {
 
     progress(70, 'Cargando GLA externo...');
     if(d.gla && d.gla.length) {
-      state.gla = d.gla.map(r => ({
-        code: r.codigo, desc: r.descripcion,
-        pl: r.pallets, pz: r.unidades
-      }));
+      // Agrupar por código de material (por si hay duplicados en el Sheet)
+      const glaMap = {};
+      d.gla.forEach(r => {
+        const k = r.codigo;
+        if(!glaMap[k]) glaMap[k] = { code: k, desc: r.descripcion, pl: 0, pz: 0 };
+        glaMap[k].pl += r.pallets;
+        glaMap[k].pz += r.unidades;
+      });
+      state.gla = Object.values(glaMap).filter(r => r.pl > 0);
     }
 
     progress(80, 'Cargando ventas y producción...');
@@ -2498,6 +2445,10 @@ async function fetchAndInit() {
     }
 
     if(d.config) {
+      const ua = d.config['ultima_actualizacion'];
+      const el = document.getElementById('config-last-update');
+      if(el && ua) el.textContent = '⏱ Última actualización SAP: ' + ua;
+    }
       if(d.config.ppp_beauty)  FV_PARAMS.pppBty  = Number(d.config.ppp_beauty);
       if(d.config.ppp_gw)      FV_PARAMS.pppOpal = Number(d.config.ppp_gw);
       if(d.config.tph_beauty)  FV_PARAMS.tphBty  = Number(d.config.tph_beauty);
