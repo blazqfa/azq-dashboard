@@ -328,10 +328,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Exportar Excel
         </button>
-        <button class="btn btn-primary" onclick="showPage('upload')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Actualizar
-        </button>
       </div>
     </div>
 
@@ -841,7 +837,10 @@ function t(key) { return (I18N[currentLang] && I18N[currentLang][key]) || I18N.e
 function setLang(lang) {
   currentLang = lang;
   try { localStorage.setItem('azq_lang', lang); } catch(e){}
-  applyLang();
+  // Highlight active button
+  document.getElementById('lang-es')?.classList.toggle('lang-active', lang==='es');
+  document.getElementById('lang-it')?.classList.toggle('lang-active', lang==='it');
+  // Re-render all dynamic content
   renderAll();
   renderGLAPage();
 }
@@ -2798,7 +2797,12 @@ async function fetchAndInit() {
 
 try { currentLang = localStorage.getItem('azq_lang') || 'es'; } catch(e){}
 cargarCapacidadesGuardadas();
-fetchAndInit();
+fetchAndInit().then(() => {
+  // Reapply language after data loads (renderAll may reset some elements)
+  try { currentLang = localStorage.getItem('azq_lang') || 'es'; } catch(e){}
+  document.getElementById('lang-es')?.classList.toggle('lang-active', currentLang==='es');
+  document.getElementById('lang-it')?.classList.toggle('lang-active', currentLang==='it');
+});
 </script>
 </body>
 </html>
