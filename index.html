@@ -238,7 +238,7 @@
   .evol-yr-toggle input:checked + span { background:#1B4F91;color:#fff;border-color:#1B4F91; }
   .evol-yr-toggle:hover span { border-color:#1B4F91; }
 
-  /* Loading overlay */
+  .lang-active { border-color: #1B4F91 !important; background: #EBF0F9 !important; color: #1B4F91 !important; }
   #loading-overlay {
     position:fixed;inset:0;background:#1B4F91;display:flex;flex-direction:column;
     align-items:center;justify-content:center;z-index:9999;transition:opacity .4s;
@@ -607,6 +607,23 @@
     <div class="page" id="page-upload">
       <div style="max-width:600px">
 
+        <!-- Idioma -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px">
+          <div style="font-weight:700;font-size:14px;color:var(--text1);margin-bottom:14px">🌐 Idioma / Lingua</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <button id="lang-es" onclick="setLang('es')"
+              style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;border:2px solid var(--border2);background:var(--bg);cursor:pointer;font-size:14px;font-weight:600;transition:all .15s"
+              class="lang-active">
+              🇪🇸 Español
+            </button>
+            <button id="lang-it" onclick="setLang('it')"
+              style="display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;border:2px solid var(--border2);background:var(--bg);cursor:pointer;font-size:14px;font-weight:600;transition:all .15s">
+              🇮🇹 Italiano
+            </button>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3)">El idioma se guarda automáticamente · La lingua viene salvata automaticamente</div>
+        </div>
+
         <!-- Cómo actualizar datos -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
@@ -672,6 +689,174 @@
 </div>
 
 <script>
+// ===== I18N — MULTI-IDIOMA =====
+const I18N = {
+  es: {
+    // Nav
+    nav_overview: 'Resumen general', nav_azq: 'Almacén AZQ',
+    nav_gla: 'Almacén externo GLA', nav_fv: 'Fabricación vs Ventas',
+    nav_config: 'Configuración', nav_recargar: 'Recargar datos',
+    // Topbar
+    btn_actualizar: 'Actualizar', btn_pdf: 'Exportar PDF', btn_excel: 'Exportar Excel',
+    sin_datos: 'Sin datos cargados', actualizando: 'Actualizando...',
+    actualizado: 'Actualizado:',
+    // KPIs
+    kpi_ocup: 'Ocupación total AZQ', kpi_stock: 'Pallets stock AZQ',
+    kpi_libre: 'Capacidad libre AZQ', kpi_gla: 'GLA — almacén externo',
+    kpi_pallets_disp: 'pallets disponibles', kpi_capacidad: 'Capacidad:',
+    kpi_refs: 'referencias', kpi_cap_ref: 'Cap. ref',
+    // Map
+    mapa_titulo: 'MAPA DE OCUPACIÓN POR ZONA',
+    mapa_planta: 'ALMACÉN AZUQUECA (AZQ) — PLANTA GENERAL',
+    mapa_click: 'Haz clic en una zona para ver el detalle',
+    // Status
+    saturado: 'Saturado', atencion: 'Atención', correcto: 'Correcto',
+    // AZQ page tabs
+    tab_resumen: 'Resumen de zonas', tab_gw: 'Desglose Glassware',
+    tab_beauty: 'Beauty', tab_historico: 'Histórico',
+    // AZQ table headers
+    th_zona: 'Zona', th_color: 'Color', th_stock: 'Stock (pl)',
+    th_cap: 'Capacidad (pl)', th_ocup: '% Ocupación',
+    th_libres: 'Pallets libres/exceso', th_estado: 'Estado',
+    total_azq: 'Total AZQ',
+    // GLA page
+    gla_total: 'Total pallets GLA', gla_refs: 'Referencias en GLA',
+    gla_azq_stock: 'Stock AZQ (refs GLA)', gla_codigos: 'códigos de producto activos',
+    gla_mismo: 'de los mismos códigos en AZQ', gla_cap: 'Cap. referencia:',
+    gla_mostrar_enviar: 'Mostrar panel "Enviar a GLA"',
+    gla_traer: 'Traer de GLA a AZQ', gla_enviar: 'Enviar de AZQ a GLA',
+    gla_total_lbl: 'Total:', gla_analisis: 'Almacén externo GLA — Análisis distribución 20/80',
+    th_cod: 'Código material', th_desc: 'Descripción',
+    th_pl_gla: 'Pallets GLA', th_pl_azq: 'Pallets AZQ', th_total: 'Total',
+    th_pct: '% AZQ', th_obj: 'Objetivo (20%)', th_accion: 'Acción',
+    lbl_traer: 'Traer', lbl_enviar: 'Enviar', lbl_ok: '✓ OK',
+    obj_nota: 'Objetivo: 20% AZQ · 80% GLA por referencia.',
+    // Histórico
+    hist_todos_años: 'Todos los años', hist_todos_meses: 'Todos los meses',
+    hist_actualizaciones: 'actualizaciones', hist_limpiar: '🗑 Limpiar',
+    hist_confirm: '¿Borrar todo el histórico?',
+    hist_vacio: 'Sin datos históricos aún',
+    hist_vacio_sub: 'El histórico se guarda automáticamente cada vez que actualizas los datos.',
+    hist_sin_filtro: 'No hay registros para el filtro seleccionado',
+    hist_cap: 'Capacidad (pl)',
+    hist_gla: 'GLA externo',
+    // Config page
+    cfg_titulo: 'Cómo actualizar los datos',
+    cfg_sub: 'El dashboard se alimenta de Google Sheets vía Apps Script',
+    cfg_paso1: 'Exporta el Excel de SAP',
+    cfg_paso1b: 'Descarga Actualización_de_datos_SAP_para_KPIs.xlsx',
+    cfg_paso2: 'Súbelo a Google Drive',
+    cfg_paso2b: 'Abre drive.google.com → arrastra el archivo (mismo nombre)',
+    cfg_paso3: 'Ejecuta el script',
+    cfg_paso3b: 'Google Sheet AZQ_Dashboard_Data → menú 🏭 AZQ Dashboard → 📥 Actualizar desde Excel SAP',
+    cfg_paso4: 'Recarga el dashboard',
+    cfg_paso4b: 'Pulsa "Actualizar" arriba — todos ven los datos nuevos al instante',
+    cfg_recargar: 'Recargar datos ahora',
+    cfg_caps: 'Configuración de capacidades (pallets)',
+    cfg_cap_gw: 'Cap. Glassware', cfg_cap_bloq: 'Cap. Prov-Bloq GW',
+    cfg_cap_bty: 'Cap. Beauty', cfg_cap_ag: 'Cap. After Glass / RF',
+    cfg_cap_emb: 'Cap. Embalaje', cfg_cap_gla: 'Cap. GLA externo',
+    cfg_aplicar: 'Aplicar capacidades',
+    cfg_guardado: '✅ Capacidades guardadas correctamente.',
+    cfg_idioma: 'Idioma / Lingua',
+    cfg_guardar_idioma: 'Guardar',
+    // Sidebar
+    principal: 'PRINCIPAL', configuracion: 'CONFIGURACIÓN',
+    datos_lbl: 'Datos:',
+    // Alerts
+    alerta_supera: 'supera la capacidad en',
+    alerta_pallets: 'pallets por encima del máximo',
+    // Charts
+    chart_stock: 'Stock actual (pl)', chart_cap: 'Capacidad (pl)',
+  },
+  it: {
+    nav_overview: 'Riepilogo generale', nav_azq: 'Magazzino AZQ',
+    nav_gla: 'Magazzino esterno GLA', nav_fv: 'Produzione vs Vendite',
+    nav_config: 'Configurazione', nav_recargar: 'Ricarica dati',
+    btn_actualizar: 'Aggiorna', btn_pdf: 'Esporta PDF', btn_excel: 'Esporta Excel',
+    sin_datos: 'Nessun dato caricato', actualizando: 'Aggiornamento...',
+    actualizado: 'Aggiornato:',
+    kpi_ocup: 'Occupazione totale AZQ', kpi_stock: 'Pallet stock AZQ',
+    kpi_libre: 'Capacità libera AZQ', kpi_gla: 'GLA — magazzino esterno',
+    kpi_pallets_disp: 'pallet disponibili', kpi_capacidad: 'Capacità:',
+    kpi_refs: 'riferimenti', kpi_cap_ref: 'Cap. rif',
+    mapa_titulo: 'MAPPA OCCUPAZIONE PER ZONA',
+    mapa_planta: 'MAGAZZINO AZUQUECA (AZQ) — STABILIMENTO GENERALE',
+    mapa_click: 'Clicca su una zona per vedere il dettaglio',
+    saturado: 'Saturo', atencion: 'Attenzione', correcto: 'Corretto',
+    tab_resumen: 'Riepilogo zone', tab_gw: 'Dettaglio Glassware',
+    tab_beauty: 'Beauty', tab_historico: 'Storico',
+    th_zona: 'Zona', th_color: 'Colore', th_stock: 'Stock (pl)',
+    th_cap: 'Capacità (pl)', th_ocup: '% Occupazione',
+    th_libres: 'Pallet liberi/eccesso', th_estado: 'Stato',
+    total_azq: 'Totale AZQ',
+    gla_total: 'Totale pallet GLA', gla_refs: 'Riferimenti in GLA',
+    gla_azq_stock: 'Stock AZQ (rif. GLA)', gla_codigos: 'codici prodotto attivi',
+    gla_mismo: 'degli stessi codici in AZQ', gla_cap: 'Cap. riferimento:',
+    gla_mostrar_enviar: 'Mostra pannello "Invia a GLA"',
+    gla_traer: 'Portare da GLA ad AZQ', gla_enviar: 'Inviare da AZQ a GLA',
+    gla_total_lbl: 'Totale:', gla_analisis: 'Magazzino esterno GLA — Analisi distribuzione 20/80',
+    th_cod: 'Codice materiale', th_desc: 'Descrizione',
+    th_pl_gla: 'Pallet GLA', th_pl_azq: 'Pallet AZQ', th_total: 'Totale',
+    th_pct: '% AZQ', th_obj: 'Obiettivo (20%)', th_accion: 'Azione',
+    lbl_traer: 'Portare', lbl_enviar: 'Inviare', lbl_ok: '✓ OK',
+    obj_nota: 'Obiettivo: 20% AZQ · 80% GLA per riferimento.',
+    hist_todos_años: 'Tutti gli anni', hist_todos_meses: 'Tutti i mesi',
+    hist_actualizaciones: 'aggiornamenti', hist_limpiar: '🗑 Cancella',
+    hist_confirm: 'Eliminare tutto lo storico?',
+    hist_vacio: 'Nessun dato storico ancora',
+    hist_vacio_sub: 'Lo storico viene salvato automaticamente ad ogni aggiornamento.',
+    hist_sin_filtro: 'Nessun record per il filtro selezionato',
+    hist_cap: 'Capacità (pl)', hist_gla: 'GLA esterno',
+    cfg_titulo: 'Come aggiornare i dati',
+    cfg_sub: 'Il dashboard si alimenta da Google Sheets tramite Apps Script',
+    cfg_paso1: 'Esporta il file Excel da SAP',
+    cfg_paso1b: 'Scarica Actualización_de_datos_SAP_para_KPIs.xlsx',
+    cfg_paso2: 'Caricalo su Google Drive',
+    cfg_paso2b: 'Apri drive.google.com → trascina il file (stesso nome)',
+    cfg_paso3: 'Esegui lo script',
+    cfg_paso3b: 'Google Sheet AZQ_Dashboard_Data → menu 🏭 AZQ Dashboard → 📥 Aggiorna da Excel SAP',
+    cfg_paso4: 'Ricarica il dashboard',
+    cfg_paso4b: 'Premi "Aggiorna" in alto — tutti vedono i nuovi dati istantaneamente',
+    cfg_recargar: 'Ricarica dati ora',
+    cfg_caps: 'Configurazione capacità (pallet)',
+    cfg_cap_gw: 'Cap. Glassware', cfg_cap_bloq: 'Cap. Prov-Bloq GW',
+    cfg_cap_bty: 'Cap. Beauty', cfg_cap_ag: 'Cap. After Glass / RF',
+    cfg_cap_emb: 'Cap. Imballaggio', cfg_cap_gla: 'Cap. GLA esterno',
+    cfg_aplicar: 'Applica capacità',
+    cfg_guardado: '✅ Capacità salvate correttamente.',
+    cfg_idioma: 'Idioma / Lingua',
+    cfg_guardar_idioma: 'Salva',
+    principal: 'PRINCIPALE', configuracion: 'CONFIGURAZIONE',
+    datos_lbl: 'Dati:',
+    alerta_supera: 'supera la capacità del',
+    alerta_pallets: 'pallet sopra il massimo',
+    chart_stock: 'Stock attuale (pl)', chart_cap: 'Capacità (pl)',
+  }
+};
+
+let currentLang = 'es';
+function t(key) { return (I18N[currentLang] && I18N[currentLang][key]) || I18N.es[key] || key; }
+
+function setLang(lang) {
+  currentLang = lang;
+  try { localStorage.setItem('azq_lang', lang); } catch(e){}
+  applyLang();
+  renderAll();
+  renderGLAPage();
+}
+
+function applyLang() {
+  // Static elements with data-i18n attribute
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+  // Flag buttons highlight
+  document.getElementById('lang-es')?.classList.toggle('lang-active', currentLang==='es');
+  document.getElementById('lang-it')?.classList.toggle('lang-active', currentLang==='it');
+}
+
 // ===== DATA STATE =====
 let state = {
   lastUpdate: null,
@@ -717,7 +902,7 @@ function pctClass(p) { if(p>1)return'danger'; if(p>=.85)return'warn'; return'ok'
 function pctColor(p) { if(p>1)return'#C0392B'; if(p>=.85)return'#B7640A'; return'#1E7B4B'; }
 function badge(p) {
   const c = pctClass(p);
-  const labels = {ok:'Correcto',warn:'Atención',danger:'Saturado'};
+  const labels = {ok:t('correcto'),warn:t('atencion'),danger:t('saturado')};
   return `<span class="kpi-badge badge-${c}">${labels[c]}</span>`;
 }
 function fmt(n) {
@@ -769,10 +954,10 @@ function renderKPIs() {
   const glaCap = state.caps.gla;
 
   const cards = [
-    { label:'Ocupación total AZQ', value:(totalPct*100).toFixed(1)+'%', sub:`${fmt(totalStock)} / ${fmt(totalCap)} pl`, pctVal:totalPct, zone:null },
-    { label:'Pallets stock AZQ', value:fmt(totalStock), sub:`Capacidad: ${fmt(totalCap)} pl`, pctVal:totalPct, zone:null },
-    { label:'Capacidad libre AZQ', value:fmt(Math.max(0,totalCap-totalStock)), sub:'pallets disponibles', pctVal:1-(totalCap-totalStock)/totalCap, zone:null },
-    { label:'GLA — almacén externo', value:fmt(glaTotal)+' pl', sub:`${state.gla.length} referencias · Cap. ref: ${fmt(glaCap)} pl`, pctVal:pct(glaTotal,glaCap), zone:'gla' },
+    { label:t('kpi_ocup'), value:(totalPct*100).toFixed(1)+'%', sub:`${fmt(totalStock)} / ${fmt(totalCap)} pl`, pctVal:totalPct, zone:null },
+    { label:t('kpi_stock'), value:fmt(totalStock), sub:`${t('kpi_capacidad')} ${fmt(totalCap)} pl`, pctVal:totalPct, zone:null },
+    { label:t('kpi_libre'), value:fmt(Math.max(0,totalCap-totalStock)), sub:t('kpi_pallets_disp'), pctVal:1-(totalCap-totalStock)/totalCap, zone:null },
+    { label:t('kpi_gla'), value:fmt(glaTotal)+' pl', sub:`${state.gla.length} ${t('kpi_refs')} · ${t('kpi_cap_ref')}: ${fmt(glaCap)} pl`, pctVal:pct(glaTotal,glaCap), zone:'gla' },
   ];
 
   document.getElementById('kpi-row-main').innerHTML = cards.map((c,i) => {
@@ -1030,7 +1215,7 @@ function renderAZQPage() {
   document.getElementById('tab-azq-resumen').innerHTML = `
     <table class="data-table">
       <thead><tr>
-        <th>Zona</th><th>Color</th><th>Stock (pl)</th><th>Capacidad (pl)</th><th>% Ocupación</th><th>Pallets libres/exceso</th><th>Estado</th>
+      <th>${t('th_zona')}</th><th>${t('th_color')}</th><th>${t('th_stock')}</th><th>${t('th_cap')}</th><th>${t('th_ocup')}</th><th>${t('th_libres')}</th><th>${t('th_estado')}</th>
       </tr></thead>
       <tbody>
         ${state.zones.map(z=>{
@@ -1204,11 +1389,20 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const map = {overview:'Resumen general',azq:'Almacén AZQ',gla:'Almacén externo GLA',fabventa:'Fabricación vs Ventas',upload:'Actualizar datos'};
+  const map = {overview:'Resumen general',azq:'Almacén AZQ',gla:'Almacén externo GLA',fabventa:'Fabricación vs Ventas',upload:'Configuración'};
   document.getElementById('topbar-title').textContent = map[id]||id;
   const idx = ['overview','azq','gla','fabventa','upload'].indexOf(id);
   document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
   if(id==='fabventa') setTimeout(renderFabVentas, 50);
+  // Al abrir Configuración, mostrar los valores actuales de capacidades
+  if(id==='upload') {
+    ['gw','bloq','bty','ag','emb','gla'].forEach(k => {
+      const el = document.getElementById('cap-'+k);
+      if(el) el.value = state.caps[k] || el.value;
+    });
+    const ua = document.getElementById('config-last-update');
+    if(ua && state.lastUpdate?._filename) ua.textContent = '⏱ Última actualización SAP: ' + state.lastUpdate._filename;
+  }
 }
 
 function switchTab(el, tabId) {
@@ -1338,18 +1532,34 @@ function parseWorkbook(wb, filename) {
 }
 
 function updateCapacities() {
-  state.caps.gw = parseInt(document.getElementById('cap-gw').value)||7573;
+  state.caps.gw   = parseInt(document.getElementById('cap-gw').value)||7573;
   state.caps.bloq = parseInt(document.getElementById('cap-bloq').value)||6145;
-  state.caps.bty = parseInt(document.getElementById('cap-bty').value)||5338;
-  state.caps.ag = parseInt(document.getElementById('cap-ag').value)||3342;
-  state.caps.emb = parseInt(document.getElementById('cap-emb').value)||4030;
-  state.caps.gla = parseInt(document.getElementById('cap-gla').value)||1500;
+  state.caps.bty  = parseInt(document.getElementById('cap-bty').value)||5338;
+  state.caps.ag   = parseInt(document.getElementById('cap-ag').value)||3342;
+  state.caps.emb  = parseInt(document.getElementById('cap-emb').value)||4030;
+  state.caps.gla  = parseInt(document.getElementById('cap-gla').value)||1500;
+  // Guardar en localStorage para que persistan entre recargas
+  try { localStorage.setItem('azq_caps', JSON.stringify(state.caps)); } catch(e){}
   renderAll();
   if(typeof fvDetectarDesviaciones === 'function') {
     if(document.getElementById('page-fabventa').classList.contains('active')) renderFabVentas();
     else fvDetectarDesviaciones();
   }
-  alert('✅ Capacidades actualizadas correctamente.');
+  alert('✅ Capacidades guardadas correctamente.');
+}
+
+function cargarCapacidadesGuardadas() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('azq_caps')||'null');
+    if(saved) {
+      Object.assign(state.caps, saved);
+      // Actualizar campos del formulario si están visibles
+      ['gw','bloq','bty','ag','emb','gla'].forEach(id => {
+        const el = document.getElementById('cap-'+id);
+        if(el && saved[id]) el.value = saved[id];
+      });
+    }
+  } catch(e){}
 }
 
 function updateLastUpdate() {
@@ -2506,7 +2716,9 @@ async function fetchAndInit() {
         }));
       d.zonas.forEach(z => {
         const id = z.zona_id || z.id;
-        if(id && state.caps[id] !== undefined) state.caps[id] = z.capacidad || 0;
+        // Solo actualizar capacidad si el usuario no tiene guardada una propia
+        const hasSaved = localStorage.getItem('azq_caps');
+        if(id && state.caps[id] !== undefined && !hasSaved) state.caps[id] = z.capacidad || 0;
       });
     }
 
@@ -2584,6 +2796,8 @@ async function fetchAndInit() {
   }
 }
 
+try { currentLang = localStorage.getItem('azq_lang') || 'es'; } catch(e){}
+cargarCapacidadesGuardadas();
 fetchAndInit();
 </script>
 </body>
