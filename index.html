@@ -1101,9 +1101,15 @@ function renderAZQPage() {
 
 // ===== GLA PAGE =====
 function renderGLAPage() {
-  const total = state.gla.reduce((s,r)=>s+r.pl,0);
+  const total  = state.gla.reduce((s,r)=>s+r.pl,0);
   const glaCap = state.caps.gla;
-  const p = pct(total, glaCap);
+  const p      = pct(total, glaCap);
+  const totalAZQ = state.gla.reduce((s,r)=>s+(r.pl_azq||0),0);
+
+  // Alertas: referencias que necesitan acción
+  const traer  = state.gla.filter(r => (r.pl_mover||0) < -1);
+  const enviar = state.gla.filter(r => (r.pl_mover||0) > 1);
+
   document.getElementById('gla-content').innerHTML = `
     <div class="kpi-row" style="grid-template-columns:repeat(3,1fr)">
       <div class="kpi-card">
@@ -1119,32 +1125,83 @@ function renderGLAPage() {
         <div class="kpi-sub">códigos de producto activos</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Total unidades (pz)</div>
-        <div class="kpi-value">${fmt(Math.round(state.gla.reduce((s,r)=>s+r.pz,0)/1000))}K</div>
-        <div class="kpi-sub">${fmt(state.gla.reduce((s,r)=>s+r.pz,0))} piezas totales</div>
+        <div class="kpi-label">Stock AZQ (refs GLA)</div>
+        <div class="kpi-value">${fmt(totalAZQ)} pl</div>
+        <div class="kpi-sub">de los mismos códigos en AZQ</div>
       </div>
     </div>
+
+    ${traer.length > 0 || enviar.length > 0 ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      ${traer.length > 0 ? `
+      <div style="background:#EDF7ED;border:1px solid #8BC98B;border-radius:10px;padding:14px">
+        <div style="font-weight:700;font-size:13px;color:#1E6B1E;margin-bottom:8px">⬇ Traer de GLA a AZQ (${traer.length} refs)</div>
+        ${traer.map(r=>`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-between">
+          <span style="font-family:monospace;font-size:11px;color:#333">${r.code}</span>
+          <span style="font-weight:700;color:#1E6B1E">${fmt(Math.abs(r.pl_mover||0))} pl</span>
+        </div>`).join('')}
+        <div style="font-size:11px;color:#1E6B1E;margin-top:6px;font-weight:600">Total: ${fmt(traer.reduce((s,r)=>s+Math.abs(r.pl_mover||0),0))} pl</div>
+      </div>` : ''}
+      ${enviar.length > 0 ? `
+      <div style="background:#FFF3CD;border:1px solid #F0C040;border-radius:10px;padding:14px">
+        <div style="font-weight:700;font-size:13px;color:#7A5800;margin-bottom:8px">⬆ Enviar de AZQ a GLA (${enviar.length} refs)</div>
+        ${enviar.map(r=>`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-between">
+          <span style="font-family:monospace;font-size:11px;color:#333">${r.code}</span>
+          <span style="font-weight:700;color:#7A5800">${fmt(r.pl_mover||0)} pl</span>
+        </div>`).join('')}
+        <div style="font-size:11px;color:#7A5800;margin-top:6px;font-weight:600">Total: ${fmt(enviar.reduce((s,r)=>s+(r.pl_mover||0),0))} pl</div>
+      </div>` : ''}
+    </div>` : ''}
+
     <div class="detail-panel" style="display:block">
       <div class="detail-panel-header">
-        <div class="detail-panel-title">📍 Almacén externo GLA — Referencias actuales</div>
+        <div class="detail-panel-title">📍 Almacén externo GLA — Análisis distribución 20/80</div>
       </div>
       <div class="detail-panel-body">
         <table class="data-table">
-          <thead><tr><th>Código material</th><th>Descripción</th><th>Pallets</th><th>Unidades (pz)</th><th>% del total GLA</th></tr></thead>
+          <thead><tr>
+            <th>Código material</th>
+            <th>Descripción</th>
+            <th>Pallets GLA</th>
+            <th>Pallets AZQ</th>
+            <th>Total</th>
+            <th>% AZQ</th>
+            <th>Objetivo (20%)</th>
+            <th>Acción</th>
+          </tr></thead>
           <tbody>
-            ${state.gla.map(r=>`<tr>
-              <td style="font-family:monospace;font-size:11px">${r.code}</td>
-              <td>${r.desc}</td>
-              <td>${fmt(r.pl)}</td>
-              <td>${fmt(r.pz)}</td>
-              <td>${(r.pl/total*100).toFixed(1)}%</td>
-            </tr>`).join('')}
-            <tr class="total-row"><td colspan="2">Total GLA</td><td>${fmt(total)}</td><td>${fmt(state.gla.reduce((s,r)=>s+r.pz,0))}</td><td>100%</td></tr>
+            ${state.gla.map(r => {
+              const plMover = r.pl_mover || 0;
+              const pctAZQ  = r.pct_azq || 0;
+              const ok      = Math.abs(plMover) <= 1;
+              const accion  = ok ? '<span style="color:var(--ok);font-weight:600">✓ OK</span>'
+                : plMover < 0
+                  ? `<span style="color:var(--ok);font-weight:700">⬇ Traer ${fmt(Math.abs(plMover))} pl</span>`
+                  : `<span style="color:#7A5800;font-weight:700">⬆ Enviar ${fmt(plMover)} pl</span>`;
+              const pctColor = pctAZQ <= 25 && pctAZQ >= 15 ? 'var(--ok)' : pctAZQ > 40 ? 'var(--danger)' : 'var(--warn)';
+              return `<tr>
+                <td style="font-family:monospace;font-size:11px">${r.code}</td>
+                <td style="font-size:12px">${r.desc}</td>
+                <td>${fmt(r.pl)}</td>
+                <td>${fmt(r.pl_azq||0)}</td>
+                <td>${fmt(r.pl_total||r.pl)}</td>
+                <td style="font-weight:700;color:${pctColor}">${pctAZQ}%</td>
+                <td>${fmt(Math.round((r.pl_total||r.pl)*0.2))} pl</td>
+                <td>${accion}</td>
+              </tr>`;
+            }).join('')}
+            <tr class="total-row">
+              <td colspan="2">TOTAL</td>
+              <td>${fmt(total)}</td>
+              <td>${fmt(totalAZQ)}</td>
+              <td>${fmt(total+totalAZQ)}</td>
+              <td>${total+totalAZQ>0?Math.round(totalAZQ/(total+totalAZQ)*100):0}%</td>
+              <td colspan="2"></td>
+            </tr>
           </tbody>
         </table>
-        <div class="alert alert-warn" style="margin-top:14px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          La capacidad del GLA (${fmt(glaCap)} pl) es una referencia editable. Actualízala en <strong>Configuración → Actualizar datos</strong> si conoces la capacidad real del almacén externo.
+        <div style="margin-top:10px;font-size:11px;color:var(--text3)">
+          Objetivo: <strong>20% en AZQ · 80% en GLA</strong> por referencia. Verde = dentro del rango ±5%. Naranja = exceso en AZQ. Verde con flecha = falta en AZQ.
         </div>
       </div>
     </div>`;
@@ -2326,7 +2383,7 @@ async function fetchAndInit() {
       const glaMap = {};
       d.gla.forEach(r => {
         const k = r.codigo;
-        if(!glaMap[k]) glaMap[k] = { code: k, desc: r.descripcion, pl: 0, pz: 0 };
+        if(!glaMap[k]) glaMap[k] = { code: k, desc: r.descripcion, pl: 0, pz: 0, pl_azq: r.pl_azq||0, pl_total: r.pl_total||0, pct_azq: r.pct_azq||0, pl_mover: r.pl_mover||0 };
         glaMap[k].pl += r.pallets;
         glaMap[k].pz += r.unidades;
       });
