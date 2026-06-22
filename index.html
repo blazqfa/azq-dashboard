@@ -2335,28 +2335,43 @@ function renderHistorico() {
   let hist = {};
   try { hist = JSON.parse(localStorage.getItem('azq_historico')||'{}'); } catch(e){}
 
-  const entradas = Object.values(hist).sort((a,b) => b.ts.localeCompare(a.ts));
+  // Si hay varias del mismo día, quedarse con la última (mayor ts)
+  const porDia = {};
+  Object.values(hist).forEach(e => {
+    const dia = e.fecha.split(' ')[0]; // solo fecha sin hora
+    if(!porDia[dia] || e.ts > porDia[dia].ts) porDia[dia] = e;
+  });
 
   // Filtros
-  const años = [...new Set(entradas.map(e=>e.año))].sort((a,b)=>b-a);
-  const meses = ['Todos','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-
   const filtroAño = window._histFiltroAño || 'todos';
   const filtroMes = window._histFiltroMes || 0;
+  const mesesNombre = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-  const filtradas = entradas.filter(e =>
-    (filtroAño === 'todos' || e.año == filtroAño) &&
-    (filtroMes === 0 || e.mes === filtroMes)
-  );
+  let cols = Object.values(porDia).sort((a,b) => a.ts.localeCompare(b.ts));
 
-  if(entradas.length === 0) {
+  // Aplicar filtros
+  const años = [...new Set(cols.map(e=>e.año))].sort((a,b)=>b-a);
+  if(filtroAño !== 'todos') cols = cols.filter(e => e.año == filtroAño);
+  if(filtroMes !== 0)       cols = cols.filter(e => e.mes === filtroMes);
+
+  if(cols.length === 0) {
     el.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text3)">
       <div style="font-size:32px;margin-bottom:12px">📊</div>
-      <div style="font-weight:600;margin-bottom:6px">Sin datos históricos aún</div>
-      <div style="font-size:12px">El histórico se guarda automáticamente cada vez que actualizas los datos desde Google Sheets.</div>
+      <div style="font-weight:600;margin-bottom:6px">${Object.keys(porDia).length === 0 ? 'Sin datos históricos aún' : 'Sin registros para el filtro seleccionado'}</div>
+      <div style="font-size:12px">El histórico se guarda automáticamente cada vez que actualizas los datos.</div>
     </div>`;
     return;
   }
+
+  // Zonas fijas
+  const zonas = state.zones.length > 0 ? state.zones : (cols[cols.length-1].zonas||[]);
+
+  // Cabecera de fechas — solo dd/mm/aaaa
+  const fmtFecha = f => {
+    if(!f) return '—';
+    const m = f.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    return m ? `${m[1]}/${m[2]}/${m[3]}` : f.slice(0,10);
+  };
 
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
@@ -2368,41 +2383,61 @@ function renderHistorico() {
         </select>
         <select style="padding:5px 10px;border:1px solid var(--border2);border-radius:6px;font-size:12px"
           onchange="window._histFiltroMes=parseInt(this.value);renderHistorico()">
-          ${meses.map((m,i)=>`<option value="${i}" ${filtroMes===i?'selected':''}>${m}</option>`).join('')}
+          <option value="0" ${filtroMes===0?'selected':''}>Todos los meses</option>
+          ${mesesNombre.slice(1).map((m,i)=>`<option value="${i+1}" ${filtroMes===i+1?'selected':''}>${m}</option>`).join('')}
         </select>
-        <span style="font-size:12px;color:var(--text3)">${filtradas.length} registros</span>
+        <span style="font-size:12px;color:var(--text3)">${cols.length} actualizaciones</span>
       </div>
       <button class="btn" style="font-size:11px;color:var(--danger);border-color:var(--danger)"
         onclick="if(confirm('¿Borrar todo el histórico?')){localStorage.removeItem('azq_historico');renderHistorico()}">
-        🗑 Limpiar histórico
+        🗑 Limpiar
       </button>
     </div>
 
-    <table class="data-table">
-      <thead><tr>
-        <th>Fecha</th><th>Total AZQ (pl)</th><th>% Ocup.</th>
-        <th>GLA (pl)</th>
-        ${state.zones.map(z=>`<th>${z.name}</th>`).join('')}
-      </tr></thead>
-      <tbody>
-        ${filtradas.map(e => {
-          const p = e.totalCap > 0 ? e.total/e.totalCap : 0;
-          const cls = p > 1 ? 'danger' : p >= 0.85 ? 'warn' : 'ok';
-          return `<tr>
-            <td style="font-size:12px;white-space:nowrap">${e.fecha}</td>
-            <td style="font-weight:600">${fmt(e.total)}</td>
-            <td class="pct-${cls}">${(p*100).toFixed(1)}%</td>
-            <td>${fmt(e.gla)}</td>
-            ${state.zones.map(z=>{
-              const zd = e.zonas ? e.zonas.find(x=>x.id===z.id) : null;
-              return `<td>${zd ? fmt(zd.stock) : '—'}</td>`;
+    <div style="overflow-x:auto">
+      <table class="data-table" style="min-width:${400+cols.length*110}px">
+        <thead>
+          <tr>
+            <th style="min-width:140px;position:sticky;left:0;background:var(--surface);z-index:2">Zona</th>
+            <th style="min-width:100px;position:sticky;left:140px;background:var(--surface);z-index:2">Capacidad (pl)</th>
+            ${cols.map(c=>`<th style="min-width:100px;text-align:right">${fmtFecha(c.fecha)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${zonas.map(z => {
+            const capZ = cap(z.id||z.id);
+            return `<tr>
+              <td style="position:sticky;left:0;background:var(--bg);z-index:1;font-weight:600">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${z.color};margin-right:6px;vertical-align:middle"></span>
+                ${z.name||z.nombre}
+              </td>
+              <td style="position:sticky;left:140px;background:var(--bg);z-index:1;color:var(--text3)">${fmt(capZ)}</td>
+              ${cols.map(c => {
+                const zd = c.zonas ? c.zonas.find(x=>x.id===(z.id||z.id)) : null;
+                const stock = zd ? zd.stock : null;
+                const p = stock !== null && capZ > 0 ? stock/capZ : null;
+                const color = p === null ? 'var(--text3)' : p > 1 ? 'var(--danger)' : p >= 0.85 ? 'var(--warn)' : 'var(--ok)';
+                return `<td style="text-align:right;font-weight:600;color:${color}">${stock !== null ? fmt(stock) : '—'}</td>`;
+              }).join('')}
+            </tr>`;
+          }).join('')}
+          <tr class="total-row">
+            <td style="position:sticky;left:0;background:var(--surface);z-index:1">TOTAL AZQ</td>
+            <td style="position:sticky;left:140px;background:var(--surface);z-index:1;color:var(--text3)">${fmt(zonas.reduce((s,z)=>s+cap(z.id||z.id),0))}</td>
+            ${cols.map(c => {
+              const p = c.totalCap > 0 ? c.total/c.totalCap : 0;
+              const color = p > 1 ? 'var(--danger)' : p >= 0.85 ? 'var(--warn)' : 'var(--ok)';
+              return `<td style="text-align:right;font-weight:700;color:${color}">${fmt(c.total)}<br><span style="font-size:10px;font-weight:400">${(p*100).toFixed(1)}%</span></td>`;
             }).join('')}
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-    ${filtradas.length === 0 ? '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No hay registros para el filtro seleccionado</div>' : ''}
-  `;
+          </tr>
+          <tr>
+            <td style="position:sticky;left:0;background:var(--bg);z-index:1;color:var(--text3);font-size:12px">GLA externo</td>
+            <td style="position:sticky;left:140px;background:var(--bg);z-index:1;color:var(--text3)">—</td>
+            ${cols.map(c=>`<td style="text-align:right;color:var(--text3);font-size:12px">${fmt(c.gla)}</td>`).join('')}
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
 }
 
 // ===== SIDEBAR COLLAPSE =====
