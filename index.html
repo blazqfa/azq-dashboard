@@ -2514,23 +2514,31 @@ function exportPDF() {
 function guardarHistorico() {
   if(!state.zones || state.zones.length === 0) return;
   try {
-    const fecha = state.lastUpdate ? state.lastUpdate._filename || new Date().toLocaleDateString('es-ES') : new Date().toLocaleDateString('es-ES');
-    const now   = new Date();
-    const mes   = now.getMonth()+1;
-    const año   = now.getFullYear();
-    const key   = 'azq_hist_' + año + '_' + String(mes).padStart(2,'0');
+    const now  = new Date();
+    const dd   = String(now.getDate()).padStart(2,'0');
+    const mm   = String(now.getMonth()+1).padStart(2,'0');
+    const yyyy = now.getFullYear();
+    // Clave por día — si hay varias actualizaciones el mismo día, queda la última
+    const key  = yyyy + '_' + mm + '_' + dd;
+
+    // Fecha de los datos SAP (puede ser diferente a hoy)
+    const sapFecha = state.lastUpdate?._filename
+      ? state.lastUpdate._filename.replace('Google Sheets · ','').split('T')[0]
+      : dd+'/'+mm+'/'+yyyy;
 
     const entrada = {
-      key, mes, año,
-      fecha: fecha.replace('Google Sheets · ',''),
-      ts:    now.toISOString(),
-      total: state.zones.reduce((s,z)=>s+z.stock,0),
+      key,
+      mes:      parseInt(mm),
+      año:      yyyy,
+      fecha:    dd+'/'+mm+'/'+yyyy,  // fecha de la actualización (hoy)
+      sapFecha: sapFecha,             // fecha del dato SAP
+      ts:       now.toISOString(),
+      total:    state.zones.reduce((s,z)=>s+z.stock,0),
       totalCap: state.zones.reduce((s,z)=>s+cap(z.id),0),
-      gla:  state.gla.reduce((s,r)=>s+r.pl,0),
-      zonas: state.zones.map(z=>({ id:z.id, name:z.name, stock:z.stock, cap:cap(z.id) }))
+      gla:      state.gla.reduce((s,r)=>s+r.pl,0),
+      zonas:    state.zones.map(z=>({ id:z.id, name:z.name, stock:z.stock, cap:cap(z.id) }))
     };
 
-    // Guardar en localStorage
     const hist = JSON.parse(localStorage.getItem('azq_historico')||'{}');
     hist[key] = entrada;
     localStorage.setItem('azq_historico', JSON.stringify(hist));
@@ -2575,12 +2583,8 @@ function renderHistorico() {
   // Zonas fijas
   const zonas = state.zones.length > 0 ? state.zones : (cols[cols.length-1].zonas||[]);
 
-  // Cabecera de fechas — solo dd/mm/aaaa
-  const fmtFecha = f => {
-    if(!f) return '—';
-    const m = f.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    return m ? `${m[1]}/${m[2]}/${m[3]}` : f.slice(0,10);
-  };
+  // Cabecera de fechas — dd/mm/yyyy
+  const fmtFecha = f => f ? f.split(' ')[0] : '—';
 
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
