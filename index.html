@@ -3250,45 +3250,9 @@ fetchAndInit().then(() => {
   document.getElementById('lang-es')?.classList.toggle('lang-active', currentLang==='es');
   document.getElementById('lang-it')?.classList.toggle('lang-active', currentLang==='it');
 });
-</script>
-</body>
-</html>
 
 // ===== HISTÓRICO AZQ =====
 // Guarda automáticamente cada vez que se cargan datos nuevos
-function guardarHistorico() {
-  if(!state.zones || state.zones.length === 0) return;
-  try {
-    const now  = new Date();
-    const dd   = String(now.getDate()).padStart(2,'0');
-    const mm   = String(now.getMonth()+1).padStart(2,'0');
-    const yyyy = now.getFullYear();
-    // Clave por día — si hay varias actualizaciones el mismo día, queda la última
-    const key  = yyyy + '_' + mm + '_' + dd;
-
-    // Fecha de los datos SAP (puede ser diferente a hoy)
-    const sapFecha = state.lastUpdate?._filename
-      ? state.lastUpdate._filename.replace('Google Sheets · ','').split('T')[0]
-      : dd+'/'+mm+'/'+yyyy;
-
-    const entrada = {
-      key,
-      mes:      parseInt(mm),
-      año:      yyyy,
-      fecha:    dd+'/'+mm+'/'+yyyy,  // fecha de la actualización (hoy)
-      sapFecha: sapFecha,             // fecha del dato SAP
-      ts:       now.toISOString(),
-      total:    state.zones.reduce((s,z)=>s+z.stock,0),
-      totalCap: state.zones.reduce((s,z)=>s+cap(z.id),0),
-      gla:      state.gla.reduce((s,r)=>s+r.pl,0),
-      zonas:    state.zones.map(z=>({ id:z.id, name:z.name, stock:z.stock, cap:cap(z.id) }))
-    };
-
-    const hist = JSON.parse(localStorage.getItem('azq_historico')||'{}');
-    hist[key] = entrada;
-    localStorage.setItem('azq_historico', JSON.stringify(hist));
-  } catch(e) { console.warn('No se pudo guardar histórico:', e); }
-}
 
 
 // ===== SIDEBAR COLLAPSE =====
