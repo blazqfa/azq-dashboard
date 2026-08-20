@@ -295,6 +295,25 @@ async function apiSet(key, value){
   }catch(e){ console.error('apiSet error', e); setSyncStatus(false); return false; }
 }
 
+// Guarda varias keys en UNA sola petición atómica (un solo bloqueo en el servidor).
+// Se usa para la BBDD de artículos, para que Vidrio y Embalaje se guarden juntos
+// y nunca queden a medias.
+async function apiSetMany(items){
+  if(!HAS_BACKEND){ Object.keys(items).forEach(k=>{ memoryStore[k]=JSON.stringify(items[k]); }); return true; }
+  try{
+    const payload = {};
+    Object.keys(items).forEach(k=>{ payload[k] = JSON.stringify(items[k]); });
+    const res = await fetchWithTimeout(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'setMany', items: payload})
+    }, 60000);
+    const j = await res.json();
+    setSyncStatus(!!j.ok);
+    return !!j.ok;
+  }catch(e){ console.error('apiSetMany error', e); setSyncStatus(false); return false; }
+}
+
 // Genera el número de packing list de forma atómica en el servidor
 // (evita duplicados si dos personas envían a la vez).
 async function apiNextNumero(letra){
@@ -335,14 +354,16 @@ async function loadAll(){
   DB.packinglists = parseKV(kv,'packinglists',[]);
   DB.counters = parseKV(kv,'counters',{});
 
-  // primera vez: guarda los valores por defecto para que ya queden en el backend
+  // Solo sembramos usuarios por defecto si de verdad faltan en el servidor (para
+  // poder entrar la primera vez). NUNCA reescribimos la BBDD de artículos aquí:
+  // si el servidor no respondiera bien un GET puntual, esto podría sobreescribir
+  // un catálogo real con los artículos de ejemplo — así que la BBDD solo se
+  // guarda cuando el usuario la importa o edita explícitamente.
   if(!kv['users']) await apiSet('users', DB.users);
-  if(!kv['articulos_vidrio']) await apiSet('articulos_vidrio', DB.vidrio);
-  if(!kv['articulos_embalaje']) await apiSet('articulos_embalaje', DB.embalaje);
 }
 
 function persistUsers(){ return apiSet('users', DB.users); }
-function persistArticulos(){ return Promise.all([apiSet('articulos_vidrio', DB.vidrio), apiSet('articulos_embalaje', DB.embalaje)]); }
+function persistArticulos(){ return apiSetMany({articulos_vidrio: DB.vidrio, articulos_embalaje: DB.embalaje}); }
 function persistPL(){ return apiSet('packinglists', DB.packinglists); }
 function persistCounters(){ return apiSet('counters', DB.counters); }
 
@@ -1224,28 +1245,21 @@ function bindCfgBBDD(){
         }
         renderContent(); // refleja el nuevo tamaño en las pestañas al momento
 
-        // Guarda cada catálogo por separado, con reintento automático, para que si
-        // uno falla lo sepamos exactamente y no se quede a medias en silencio.
-        async function saveWithRetry(label, key, value, count){
-          status.textContent = `Guardando ${label} (${count} artículos)…`;
-          let ok = await apiSet(key, value);
-          if(!ok){
-            status.textContent = `Reintentando guardar ${label}…`;
-            await new Promise(r=>setTimeout(r, 1500));
-            ok = await apiSet(key, value);
-          }
-          return ok;
+        // Guarda Vidrio y Embalaje en UNA sola petición atómica (un solo bloqueo
+        // en el servidor), con reintento automático si falla la primera vez.
+        status.textContent = `Guardando en la base de datos central… (${importedV+importedE} artículos, puede tardar unos segundos)`;
+        let ok = await apiSetMany({articulos_vidrio: DB.vidrio, articulos_embalaje: DB.embalaje});
+        if(!ok){
+          status.textContent = 'No se pudo guardar, reintentando…';
+          await new Promise(r=>setTimeout(r, 2000));
+          ok = await apiSetMany({articulos_vidrio: DB.vidrio, articulos_embalaje: DB.embalaje});
         }
 
-        const okV = await saveWithRetry('vidrio', 'articulos_vidrio', DB.vidrio, importedV);
-        const okE = await saveWithRetry('embalaje', 'articulos_embalaje', DB.embalaje, importedE);
-
-        if(okV && okE){
+        if(ok){
           status.textContent = '';
           toast(`Importado y guardado: ${importedV} artículos de vidrio, ${importedE} de embalaje.`);
         } else {
-          const fallos = [!okV && 'Vidrio', !okE && 'Embalaje'].filter(Boolean).join(' y ');
-          status.innerHTML = `<span style="color:var(--danger);">⚠️ No se pudo guardar en el servidor: ${fallos}. Comprueba la conexión y pulsa "Seleccionar archivo" para volver a intentarlo (el otro catálogo sí se guardó bien).</span>`;
+          status.innerHTML = `<span style="color:var(--danger);">⚠️ Se leyó el archivo pero no se pudo guardar en el servidor tras dos intentos. Comprueba la conexión y vuelve a pulsar "Seleccionar archivo" para reintentarlo. Mientras tanto, NO recargues la página o perderás lo leído (aunque no se haya guardado, no se ha borrado nada del servidor).</span>`;
         }
         renderContent();
       }catch(err){ console.error(err); status.textContent=''; toast('Error al leer el archivo. Comprueba el formato.'); }
