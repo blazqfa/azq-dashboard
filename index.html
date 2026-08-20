@@ -273,7 +273,7 @@ function fetchWithTimeout(url, opts, ms){
 async function apiGetAll(){
   if(!HAS_BACKEND) return null;
   try{
-    const res = await fetchWithTimeout(`${APPS_SCRIPT_URL}?action=getAll`, {}, 30000);
+    const res = await fetchWithTimeout(`${APPS_SCRIPT_URL}?action=getAll`, {}, 40000);
     const j = await res.json();
     if(!j.ok) throw new Error(j.error||'error');
     setSyncStatus(true);
@@ -288,7 +288,7 @@ async function apiSet(key, value){
       method:'POST',
       headers: {'Content-Type':'text/plain;charset=utf-8'}, // evita preflight CORS
       body: JSON.stringify({action:'set', key, value: JSON.stringify(value)})
-    }, 30000);
+    }, 40000);
     const j = await res.json();
     setSyncStatus(!!j.ok);
     return !!j.ok;
@@ -357,6 +357,8 @@ async function refreshFromServer(silent){
   DB.packinglists = parseKV(kv,'packinglists',DB.packinglists);
   DB.counters = parseKV(kv,'counters',DB.counters);
   if(document.querySelector('.modal-bg')) return; // no interrumpir si hay un modal abierto
+  const activeTag = document.activeElement && document.activeElement.tagName;
+  if(activeTag==='INPUT' || activeTag==='TEXTAREA' || activeTag==='SELECT') return; // no interrumpir mientras el usuario está escribiendo
   if(SESSION) render();
   if(!silent) toast('Datos actualizados.');
 }
@@ -1221,14 +1223,29 @@ function bindCfgBBDD(){
           DB.embalaje = newRows; importedE = newRows.length;
         }
         renderContent(); // refleja el nuevo tamaño en las pestañas al momento
-        status.textContent = `Guardando en la base de datos central… (${importedV+importedE} artículos, puede tardar unos segundos)`;
-        const okV = await apiSet('articulos_vidrio', DB.vidrio);
-        const okE = await apiSet('articulos_embalaje', DB.embalaje);
+
+        // Guarda cada catálogo por separado, con reintento automático, para que si
+        // uno falla lo sepamos exactamente y no se quede a medias en silencio.
+        async function saveWithRetry(label, key, value, count){
+          status.textContent = `Guardando ${label} (${count} artículos)…`;
+          let ok = await apiSet(key, value);
+          if(!ok){
+            status.textContent = `Reintentando guardar ${label}…`;
+            await new Promise(r=>setTimeout(r, 1500));
+            ok = await apiSet(key, value);
+          }
+          return ok;
+        }
+
+        const okV = await saveWithRetry('vidrio', 'articulos_vidrio', DB.vidrio, importedV);
+        const okE = await saveWithRetry('embalaje', 'articulos_embalaje', DB.embalaje, importedE);
+
         if(okV && okE){
           status.textContent = '';
           toast(`Importado y guardado: ${importedV} artículos de vidrio, ${importedE} de embalaje.`);
         } else {
-          status.innerHTML = `<span style="color:var(--danger);">⚠️ Se leyó el archivo pero no se pudo guardar en el servidor. Comprueba la conexión y vuelve a intentarlo.</span>`;
+          const fallos = [!okV && 'Vidrio', !okE && 'Embalaje'].filter(Boolean).join(' y ');
+          status.innerHTML = `<span style="color:var(--danger);">⚠️ No se pudo guardar en el servidor: ${fallos}. Comprueba la conexión y pulsa "Seleccionar archivo" para volver a intentarlo (el otro catálogo sí se guardó bien).</span>`;
         }
         renderContent();
       }catch(err){ console.error(err); status.textContent=''; toast('Error al leer el archivo. Comprueba el formato.'); }
@@ -1247,7 +1264,14 @@ async function init(){
     if(!SESSION) render(); // repinta el login con los usuarios reales ya cargados
   });
   if(HAS_BACKEND){
-    setInterval(()=>refreshFromServer(true), 20000); // refresco automático cada 20s
+    setInterval(()=>refreshFromServer(true), 15000); // refresco automático cada 15s
+
+    // Al volver a la pestaña/app (móviles suelen pausar los timers en segundo plano),
+    // refresca al instante en vez de esperar al siguiente ciclo de 15s.
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.visibilityState === 'visible') refreshFromServer(true);
+    });
+    window.addEventListener('focus', ()=>refreshFromServer(true));
   }
 }
 init();
