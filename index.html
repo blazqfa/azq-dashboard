@@ -36,17 +36,17 @@ input,select,textarea{font-family:inherit;}
 
 /* ---------- Logo ---------- */
 .logo{display:flex;align-items:center;gap:12px;}
-.logo img{display:block;height:34px;width:auto;object-fit:contain;}
+.logo img{display:block;height:46px;width:auto;object-fit:contain;}
 .logo-text{font-weight:600;font-size:11px;letter-spacing:1.6px;color:var(--muted);text-transform:uppercase;padding-left:12px;border-left:1.5px solid var(--line);}
 
 /* ---------- Login ---------- */
 .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
   background:radial-gradient(circle at 20% 15%,#f4f8f9,var(--bg) 60%);}
-.login-card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:38px 34px;width:100%;max-width:380px;}
+.login-card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:38px 34px;width:100%;max-width:420px;}
 .login-card .logo{justify-content:center;margin-bottom:22px;flex-direction:column;gap:10px;box-shadow:none;padding:10px 14px;}
-.login-card .logo img{height:64px;}
-.login-card .logo-text{border-left:none;padding-left:0;}
-.login-card h1{font-size:16px;text-align:center;color:var(--muted);font-weight:500;margin:0 0 26px;}
+.login-card .logo img{height:92px;}
+.login-card .logo-text{border-left:none;padding-left:0;font-size:12.5px;}
+.login-card h1{font-size:17px;text-align:center;color:var(--muted);font-weight:500;margin:0 0 26px;}
 .field{margin-bottom:16px;}
 .field label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;}
 .field input,.field select{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;font-size:15px;background:#fbfcfd;transition:border-color .15s;}
@@ -78,13 +78,19 @@ input,select,textarea{font-family:inherit;}
 .who .name{font-weight:600;font-size:14.5px;}
 .logout{background:none;border:none;color:var(--muted);font-size:13px;text-decoration:underline;}
 @media(max-width:640px){
-  .logo img{height:34px !important;}
-  .logo-text{font-size:9.5px;padding-left:8px;}
+  .topbar .logo img{height:38px !important;}
+  .topbar .logo-text{font-size:9.5px;padding-left:8px;}
   .sync-status .sync-label{display:none;}
   .who{gap:8px;}
   .who .badge{padding:3px 8px;font-size:10.5px;}
   .who .name{font-size:13px;}
   #btnRefresh{padding:5px 9px;}
+  .login-card{padding:34px 26px;max-width:100%;}
+  .login-card .logo img{height:110px !important;}
+  .login-card .logo-text{font-size:14px;}
+  .login-card h1{font-size:18px;}
+  .field input,.field select{font-size:16px;padding:13px 14px;}
+  .btn-block{padding:14px 18px;font-size:16px;}
 }
 .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:14px;margin-bottom:18px;border-bottom:1.5px solid var(--line);}
 .tab{padding:9px 15px;border-radius:9px 9px 0 0;background:transparent;border:none;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap;}
@@ -433,7 +439,7 @@ function renderLogin(){
   return `
   <div class="login-wrap">
     <div class="login-card">
-      <div class="logo">${logoSvg(64)}<div class="logo-text">Devolución de material</div></div>
+      <div class="logo">${logoSvg(92)}<div class="logo-text">Devolución de material</div></div>
       ${!HAS_BACKEND ? `<div class="error-msg" style="text-align:left;">⚠️ Backend no configurado: la app funciona solo en este navegador y no se compartirá con nadie más. Configura <code>APPS_SCRIPT_URL</code> en el archivo HTML (ver Code.gs).</div>` : ''}
       <h1>Accede con tu usuario de almacén</h1>
       <div id="loginError"></div>
@@ -472,7 +478,7 @@ function renderTopbar(){
   return `
   <div class="topbar-wrap">
     <div class="topbar">
-      <div class="logo">${logoSvg(44)}<div class="logo-text">Devolución de material</div></div>
+      <div class="logo">${logoSvg(56)}<div class="logo-text">Devolución de material</div></div>
       <div class="who">
         <span class="sync-status"><span class="sync-dot ${SYNC_OK?'sync-ok':'sync-bad'}" id="syncDot"></span><span class="sync-label" id="syncText">${HAS_BACKEND ? 'Sincronizando…' : 'Modo local (sin backend)'}</span></span>
         <button class="btn btn-outline btn-sm" id="btnRefresh" title="Actualizar ahora">🔄</button>
@@ -672,7 +678,7 @@ function buildLabelHtml(item){
   return `
     <div class="label-sheet">
       <div class="label-side"><span>${SESSION.usuario}</span></div>
-      <img src="${LOGO_SRC}" alt="Bormioli Luigi" style="height:16mm;margin-bottom:8mm;">
+      <img src="${LOGO_SRC}" alt="Bormioli Luigi" style="height:20mm;margin-bottom:8mm;">
       <div class="label-top">
         <div class="label-code">${item.codigo}</div>
         <div class="label-type">${item.tipo}</div>
