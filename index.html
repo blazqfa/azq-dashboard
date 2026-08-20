@@ -32,7 +32,7 @@ body{min-height:100vh;}
 button{font-family:inherit;cursor:pointer;}
 input,select,textarea{font-family:inherit;}
 .hidden{display:none !important;}
-#app{max-width:1180px;margin:0 auto;padding:0 16px 60px;}
+#app{max-width:1180px;margin:0 auto;padding:20px 16px 60px;}
 
 /* ---------- Logo ---------- */
 .logo{display:flex;align-items:center;gap:12px;}
@@ -67,7 +67,7 @@ input,select,textarea{font-family:inherit;}
 .demo-users{margin-top:22px;font-size:11.5px;color:var(--muted);line-height:1.6;text-align:center;}
 
 /* ---------- Top nav ---------- */
-.topbar-wrap{background:#fff;box-shadow:0 1px 2px rgba(20,40,50,.06);position:sticky;top:0;left:50%;right:50%;width:100vw;margin-left:-50vw;margin-right:-50vw;margin-bottom:18px;z-index:20;}
+.topbar-wrap{background:#fff;box-shadow:0 1px 2px rgba(20,40,50,.06);position:sticky;top:0;width:100%;z-index:20;}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;max-width:1180px;margin:0 auto;}
 .who{display:flex;align-items:center;gap:10px;}
 .who .badge{background:var(--brand-soft);color:var(--brand-dark);font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;}
@@ -172,6 +172,7 @@ tr:last-child td{border-bottom:none;}
 </style>
 </head>
 <body>
+<div id="topbarRoot"></div>
 <div id="app"></div>
 <div id="printArea"></div>
 
@@ -406,8 +407,10 @@ function searchArticulos(tipo, q){
 /* ---------------- Render root ---------------- */
 function render(){
   const app = document.getElementById('app');
-  if(!SESSION){ app.innerHTML = renderLogin(); bindLogin(); return; }
-  app.innerHTML = renderTopbar() + renderTabs() + '<div id="content"></div>';
+  const topbarRoot = document.getElementById('topbarRoot');
+  if(!SESSION){ topbarRoot.innerHTML=''; app.innerHTML = renderLogin(); bindLogin(); return; }
+  topbarRoot.innerHTML = renderTopbar();
+  app.innerHTML = renderTabs() + '<div id="content"></div>';
   bindTopbar();
   renderContent();
 }
