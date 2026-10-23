@@ -465,14 +465,81 @@
       </div>
 
       <div id="tab-fv-externo" style="display:none">
+
+        <!-- SELECTOR GW / BTY -->
+        <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:14px;flex-wrap:wrap">
+          <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">Calcular con:</div>
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;color:var(--accent)">
+            <input type="checkbox" id="fv-chk-gw" checked onchange="fvMaterialFilter()" style="width:15px;height:15px;accent-color:var(--accent)">
+            🔵 Glassware (GW) <span style="font-size:11px;font-weight:400;color:var(--text3)">&nbsp;— material en GLA externo</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:600;color:#B7640A">
+            <input type="checkbox" id="fv-chk-bty" onchange="fvMaterialFilter()" style="width:15px;height:15px;accent-color:#B7640A">
+            🟠 Beauty (BTY) <span style="font-size:11px;font-weight:400;color:var(--text3)">&nbsp;— no se traslada a GLA</span>
+          </label>
+          <div style="margin-left:auto;font-size:11px;color:var(--text3);background:#F4F5F7;padding:5px 10px;border-radius:6px;max-width:260px">
+            💡 GLA sólo gestiona material GW. Activar BTY puede usarse para ver el total interno AZQ.
+          </div>
+          <div id="fv-material-badge" style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;background:var(--accent-light);color:var(--accent)">Modo: Solo GW</div>
+        </div>
+
+        <!-- Stock real GLA -->
+        <div style="display:flex;align-items:center;gap:14px;padding:10px 16px;background:#EBF5FB;border:1px solid #AED6F1;border-radius:8px;margin-bottom:14px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:700;color:#1B4F91">📦 Stock real actual en GLA externo:</span>
+          <input type="number" id="fv-gla-real-input" value="5771" step="10" min="0" style="width:100px;padding:5px 8px;border:1.5px solid #AED6F1;border-radius:6px;font-size:13px;font-weight:700;color:#1B4F91;text-align:center" onchange="fvUpdateGlaReal()">
+          <span style="font-size:12px;color:var(--text3)">pallets — dato real de hoy (tomado del histórico GLA)</span>
+          <span id="fv-gla-real-badge" style="font-size:11px;background:#1B4F91;color:#fff;padding:3px 10px;border-radius:6px;font-weight:700">5.771 pl en GLA ahora</span>
+        </div>
+
         <div class="alert alert-warn" id="fv-externo-alert"></div>
         <div class="charts-row" style="grid-template-columns:1fr">
           <div class="chart-card">
-            <div class="chart-title">Pallets en almacén externo necesarios · Progresión 2026–2027</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+              <div class="chart-title" style="margin:0" id="fv-externo-chart-title">Pallets en almacén externo necesarios · Progresión 2026–2027</div>
+              <div id="fv-externo-subtitle" style="font-size:11px;color:var(--text3)">Solo GW · GLA actual: 5.771 pl</div>
+            </div>
             <div style="position:relative;height:280px"><canvas id="chartFvExterno"></canvas></div>
           </div>
         </div>
         <div id="fv-externo-table"></div>
+
+        <!-- SIMULACIÓN DE COSTES GLA -->
+        <div id="fv-coste-sim" style="margin-top:20px">
+          <div class="detail-panel" style="display:block">
+            <div class="detail-panel-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+              <div class="detail-panel-title">💶 Simulación de costes almacén externo GLA</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <span style="font-size:11px;color:var(--text3);font-weight:700">Tarifas GLA reales:</span>
+                <div style="display:flex;align-items:center;gap:5px">
+                  <label style="font-size:11px;color:var(--text2)">Almacenaje (€/pl/mes):</label>
+                  <input type="number" id="gla-tarifa-alm" value="3.80" step="0.10" min="0" style="width:58px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px" onchange="renderFvCosteSim()">
+                </div>
+                <div style="display:flex;align-items:center;gap:5px">
+                  <label style="font-size:11px;color:var(--text2)">Entrada (€/pl):</label>
+                  <input type="number" id="gla-tarifa-entrada" value="2.50" step="0.10" min="0" style="width:55px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px" onchange="renderFvCosteSim()">
+                </div>
+                <div style="display:flex;align-items:center;gap:5px">
+                  <label style="font-size:11px;color:var(--text2)">E/S manipulación (€/pl):</label>
+                  <input type="number" id="gla-tarifa-man" value="1.50" step="0.10" min="0" style="width:55px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px" onchange="renderFvCosteSim()">
+                </div>
+                <div style="display:flex;align-items:center;gap:5px">
+                  <label style="font-size:11px;color:var(--text2)">Transporte (€/viaje):</label>
+                  <input type="number" id="gla-tarifa-transp" value="140" step="10" min="0" style="width:60px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px" onchange="renderFvCosteSim()">
+                </div>
+                <div style="display:flex;align-items:center;gap:5px">
+                  <label style="font-size:11px;color:var(--text2)">Viajes/mes:</label>
+                  <input type="number" id="gla-tarifa-viajes" value="4" step="1" min="0" style="width:45px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px" onchange="renderFvCosteSim()">
+                </div>
+                <button class="btn btn-primary" onclick="renderFvCosteSim()" style="font-size:11px;padding:4px 12px">Recalcular</button>
+              </div>
+            </div>
+            <div class="detail-panel-body">
+              <div id="fv-coste-sim-kpis" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px"></div>
+              <div id="fv-coste-sim-table"></div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <div id="tab-fv-alertas" style="display:none">
@@ -1765,6 +1832,54 @@ let fvCharts = {};
 // Por defecto todas activas; el usuario puede desmarcar desde la tabla AZQ
 let fvZonasCapacidad = new Set(['gw','bloq','bty']); // BTY + GW + Prov-Bloq por defecto
 
+// Selector de material GW / BTY para cálculo de necesidad GLA
+// GLA externo SOLO gestiona GW — por defecto solo GW activo
+let fvUseGW = true;
+let fvUseBTY = false;
+let fvGlaReal = 5771;  // Stock real actual en almacén GLA externo
+
+function fvMaterialFilter() {
+  const chkGW = document.getElementById('fv-chk-gw');
+  const chkBTY = document.getElementById('fv-chk-bty');
+  fvUseGW  = chkGW  ? chkGW.checked  : true;
+  fvUseBTY = chkBTY ? chkBTY.checked : false;
+  // Al menos uno debe estar activo
+  if(!fvUseGW && !fvUseBTY) {
+    fvUseGW = true;
+    if(chkGW) chkGW.checked = true;
+  }
+  const badge = document.getElementById('fv-material-badge');
+  if(badge) {
+    if(fvUseGW && fvUseBTY) { badge.textContent = 'Modo: GW + BTY (Total)'; badge.style.background='#E8F4FD'; badge.style.color='#1B4F91'; }
+    else if(fvUseGW)          { badge.textContent = 'Modo: Solo GW';         badge.style.background='var(--accent-light)'; badge.style.color='var(--accent)'; }
+    else                       { badge.textContent = 'Modo: Solo BTY';        badge.style.background='#FEF3E2'; badge.style.color='#B7640A'; }
+  }
+  const sub = document.getElementById('fv-externo-subtitle');
+  if(sub) {
+    const modeLabel = fvUseGW && fvUseBTY ? 'GW + BTY' : fvUseGW ? 'Solo GW' : 'Solo BTY';
+    sub.textContent = `${modeLabel} · GLA actual: ${fmt(fvGlaReal)} pl`;
+  }
+  renderFvKPIs();
+  renderFvExternoChart();
+  renderFvExternoTable();
+  renderFvCosteSim();
+}
+
+function fvUpdateGlaReal() {
+  const inp = document.getElementById('fv-gla-real-input');
+  fvGlaReal = parseFloat(inp?.value) || 5771;
+  const badge = document.getElementById('fv-gla-real-badge');
+  if(badge) badge.textContent = `${fmt(fvGlaReal)} pl en GLA ahora`;
+  const sub = document.getElementById('fv-externo-subtitle');
+  if(sub) {
+    const modeLabel = fvUseGW && fvUseBTY ? 'GW + BTY' : fvUseGW ? 'Solo GW' : 'Solo BTY';
+    sub.textContent = `${modeLabel} · GLA actual: ${fmt(fvGlaReal)} pl`;
+  }
+  renderFvExternoChart();
+  renderFvExternoTable();
+  renderFvCosteSim();
+}
+
 function fvVentasOPAL(i) { return FV.ventasOPALic[i] + FV.ventasOPALterzi[i]; }
 
 function fvCalcStock() {
@@ -1787,9 +1902,14 @@ function fvCalcStock() {
       continue;
     }
     // Forecast: accumulate from last real
+    // Filtrar producción y ventas según selector GW/BTY
     if(i > lastKnownIdx) {
-      const prodPl = (prodBTY[i]/pppB*1000) + (prodOPAL[i]/pppO*1000);
-      const ventPl = (FV.ventasBTY[i]/pppB*1000) + (fvVentasOPAL(i)/pppO*1000);
+      const usGW  = typeof fvUseGW  !== 'undefined' ? fvUseGW  : true;
+      const usBTY = typeof fvUseBTY !== 'undefined' ? fvUseBTY : false;
+      // Si solo un tipo → solo ese flujo; si ambos → flujo total
+      const prodPl = (usBTY ? (prodBTY[i]/pppB*1000) : 0) + (usGW ? (prodOPAL[i]/pppO*1000) : 0);
+      const ventPl = (usBTY ? (FV.ventasBTY[i]/pppB*1000) : 0) + (usGW ? (fvVentasOPAL(i)/pppO*1000) : 0);
+      // Capacidad AZQ filtrada por el mismo criterio
       s = s + prodPl - ventPl;
       forecast.push(Math.round(s));
     } else {
@@ -1799,10 +1919,125 @@ function fvCalcStock() {
   return forecast;
 }
 
+// Stock inicial filtrado por GW/BTY (para el cálculo del exceso)
+function fvStockIniFiltered() {
+  const usGW  = typeof fvUseGW  !== 'undefined' ? fvUseGW  : true;
+  const usBTY = typeof fvUseBTY !== 'undefined' ? fvUseBTY : false;
+  // Estimación: si solo GW — descontar andel BTY del stock total AZQ
+  // ratio BTY/GW aproximado del último dato de zonas
+  const totCap = state.zones.reduce((s,z)=>s+(z.capacity||0),0)||1;
+  const btyZones  = state.zones.filter(z=>z.id==='bty');
+  const btyStk    = btyZones.reduce((s,z)=>s+(z.stock||0),0);
+  const totalStk  = FV.stockIni;
+  if(usGW && !usBTY)  return Math.max(0, totalStk - btyStk);
+  if(usBTY && !usGW)  return btyStk;
+  return totalStk; // ambos
+}
+
 function fvExcesoExterno() {
   const stock = fvCalcStock();
   const capVal = FV.capAZQ;  // getter — lee automáticamente de state.caps
+  // El exceso = lo que sale de AZQ y va a GLA
+  // Para GW solo: el stock real actual de GLA es el punto de partida
   return stock.map(s => s!==null ? Math.max(0, s-capVal) : null);
+}
+
+// Necesidad neta en GLA teniendo en cuenta el stock real ya allí
+// (lo que YA está en GLA no hay que "contratar" de nuevo)
+function fvNecesidadNetaGLA() {
+  const exceso = fvExcesoExterno();
+  const glaActual = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
+  return exceso.map(e => {
+    if(e === null) return null;
+    // Necesidad adicional sobre lo que ya hay contratado en GLA
+    return Math.max(0, e - glaActual);
+  });
+}
+
+function renderFvCosteSim() {
+  const externo = fvExcesoExterno();
+  const glaActual = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
+  // Tarifas reales GLA (según contrato)
+  const tarifaAlm     = parseFloat(document.getElementById('gla-tarifa-alm')?.value)    || 3.80;  // €/pallet/mes
+  const tarifaEntrada = parseFloat(document.getElementById('gla-tarifa-entrada')?.value) || 2.50;  // €/pallet (una vez, al entrar)
+  const tarifaMan     = parseFloat(document.getElementById('gla-tarifa-man')?.value)     || 1.50;  // €/pallet entrada+salida
+  const tarifaTransp  = parseFloat(document.getElementById('gla-tarifa-transp')?.value)  || 140;   // €/viaje
+  const viajesMes     = parseFloat(document.getElementById('gla-tarifa-viajes')?.value)  || 4;     // viajes/mes estimados
+
+  // Meses 2026 (índices 12-23)
+  const meses2026 = FV.meses.slice(12, 24);
+  const ext2026   = externo.slice(12, 24);
+
+  // KPIs
+  let totalCoste = 0, maxPl = 0, mesesActivos = 0;
+  const costes = ext2026.map((e, idx) => {
+    if(e === null) return null;
+    const plTotal   = Math.max(glaActual, e);          // Total en GLA este mes
+    const plNuevos  = Math.max(0, e - glaActual);      // Pallets que entran nuevos (delta)
+    const costeAlm  = plTotal * tarifaAlm;             // Almacenaje mensual sobre el total
+    const costeEntr = plNuevos * tarifaEntrada;        // Entrada: solo sobre nuevos pallets
+    const costeMan  = plNuevos * tarifaMan;            // Manipulación: solo sobre movimientos
+    const costeTrp  = viajesMes * tarifaTransp;        // Transporte fijo mensual
+    const coste     = costeAlm + costeEntr + costeMan + costeTrp;
+    totalCoste += coste; mesesActivos++;
+    if(plTotal > maxPl) maxPl = plTotal;
+    return { mes: meses2026[idx], plExceso: e, plTotal, plNuevos, costeAlm, costeEntr, costeMan, costeTrp, coste };
+  });
+
+  // KPI tiles
+  const kpiEl = document.getElementById('fv-coste-sim-kpis');
+  if(kpiEl) {
+    kpiEl.innerHTML = [
+      { label:'Coste total estimado 2026', value:`${fmt(Math.round(totalCoste))} €`, sub:`Almacenaje + Entradas + Manipulación + Transporte`, color:'var(--danger)' },
+      { label:'Pico máx. pallets en GLA', value:`${fmt(Math.round(maxPl))} pl`, sub:`Stock GLA actual: ${fmt(glaActual)} pl`, color:'var(--accent)' },
+      { label:'Coste medio mensual', value:`${fmt(Math.round(totalCoste/Math.max(1,mesesActivos)))} €/mes`, sub:`Transp. fijo: ${fmt(Math.round(viajesMes*tarifaTransp))} €/mes (${viajesMes} viajes)`, color:'var(--warn)' },
+      { label:'Solo almacenaje (pico)', value:`${fmt(Math.round(maxPl*tarifaAlm))} €/mes`, sub:`${tarifaAlm} €/pl/mes × ${fmt(Math.round(maxPl))} pl pico`, color:'var(--ok)' },
+    ].map(k=>`<div style="flex:1;min-width:170px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;border-top:3px solid ${k.color}">
+      <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${k.label}</div>
+      <div style="font-size:20px;font-weight:800;color:${k.color}">${k.value}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">${k.sub}</div>
+    </div>`).join('');
+  }
+
+  // Tabla mensual
+  const tableEl = document.getElementById('fv-coste-sim-table');
+  if(!tableEl) return;
+  const rows = costes.map(c => {
+    if(!c) return `<tr><td colspan="6" style="color:var(--text3);font-size:11px">Sin datos</td></tr>`;
+    return `<tr>
+      <td style="font-weight:600">${c.mes}</td>
+      <td style="color:var(--accent);font-weight:600">${fmt(Math.round(c.plTotal))} pl</td>
+      <td style="color:${c.plNuevos>0?'var(--warn)':'var(--text3)'}">${c.plNuevos>0?'+'+fmt(Math.round(c.plNuevos))+' pl':'—'}</td>
+      <td style="color:var(--text2)">${fmt(Math.round(c.costeAlm))} €</td>
+      <td style="color:var(--text2)">${fmt(Math.round(c.costeEntr+c.costeMan+c.costeTrp))} €</td>
+      <td style="font-weight:700;color:var(--danger)">${fmt(Math.round(c.coste))} €</td>
+    </tr>`;
+  }).join('');
+
+  tableEl.innerHTML = `
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr>
+          <th>Mes 2026</th>
+          <th>Pallets en GLA</th>
+          <th>Nuevos pl (delta)</th>
+          <th>Almacenaje (€)</th>
+          <th>Entrada+Manip+Transp (€)</th>
+          <th>Coste total mes (€)</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr style="background:var(--bg);font-weight:700">
+            <td colspan="5" style="text-align:right;padding-right:12px">TOTAL ESTIMADO 2026</td>
+            <td style="color:var(--danger);font-size:15px">${fmt(Math.round(totalCoste))} €</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text3);padding:6px 10px;background:#F4F5F7;border-radius:6px">
+      📋 Tarifas aplicadas: Almacenaje ${tarifaAlm} €/pl/mes · Entrada ${tarifaEntrada} €/pl · Manipulación E/S ${tarifaMan} €/pl · Transporte ${tarifaTransp} €/viaje × ${viajesMes} viajes/mes.
+      Stock GLA actual: ${fmt(glaActual)} pl. Los "pallets nuevos" son los que superan el stock GLA actual cada mes.
+    </div>`;
 }
 
 function renderFabVentas() {
@@ -1825,6 +2060,7 @@ function renderFabVentas() {
   renderFvPvVTable();
   renderFvExternoChart();
   renderFvExternoTable();
+  renderFvCosteSim();
   renderFvEditTable();
   fvDetectarDesviaciones();
 }
@@ -2087,6 +2323,15 @@ function renderFvExternoChart() {
   const externo = fvExcesoExterno();
   const ext2026 = externo.slice(12);  // meses 13-36 (2026+2027)
   const meses2026 = FV.meses.slice(12);
+  // Actualizar títulos y badge según modo material
+  const usGW  = typeof fvUseGW  !== 'undefined' ? fvUseGW  : true;
+  const usBTY = typeof fvUseBTY !== 'undefined' ? fvUseBTY : false;
+  const modeLabel = usGW && usBTY ? 'GW + BTY' : usGW ? 'Solo GW' : 'Solo BTY';
+  const glaAct = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
+  const titleEl = document.getElementById('fv-externo-chart-title');
+  if(titleEl) titleEl.textContent = `Pallets en almacén externo (${modeLabel}) · 2026–2027`;
+  const subEl = document.getElementById('fv-externo-subtitle');
+  if(subEl) subEl.textContent = `${modeLabel} · GLA actual: ${fmt(glaAct)} pl`;
   if(fvCharts.externo) fvCharts.externo.destroy();
   const ctx = document.getElementById('chartFvExterno')?.getContext('2d');
   if(!ctx) return;
@@ -2120,25 +2365,38 @@ function renderFvExternoTable() {
   const stock = fvCalcStock();
   const externo = fvExcesoExterno();
   const cap = FV.capAZQ;
+  const glaActual = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
+  const usGW  = typeof fvUseGW  !== 'undefined' ? fvUseGW  : true;
+  const usBTY = typeof fvUseBTY !== 'undefined' ? fvUseBTY : false;
+  const modeLabel = usGW && usBTY ? 'GW + BTY' : usGW ? 'Solo GW' : 'Solo BTY';
   const rows = FV.meses.slice(12).map((m,i)=>{
-    const s=stock[i+12]; if(s===null) return `<tr><td>${m}</td><td colspan="5" style="color:var(--text3);font-size:11px">Sin datos de previsión</td></tr>`;
+    const s=stock[i+12]; if(s===null) return `<tr><td>${m}</td><td colspan="6" style="color:var(--text3);font-size:11px">Sin datos de previsión</td></tr>`;
     const ext=externo[i+12]||0;
     const en_azq = Math.min(s,cap);
+    const extNeto = Math.max(0, ext - glaActual); // necesidad adicional sobre GLA actual
     return `<tr>
       <td>${m}</td>
       <td>${fmt(s)}</td>
       <td style="color:var(--ok);font-weight:600">${fmt(en_azq)}</td>
       <td style="${ext>0?'color:var(--danger);font-weight:600':'color:var(--text3)'}">${ext>0?fmt(ext):'—'}</td>
+      <td style="${extNeto>0?'color:var(--warn);font-weight:600':'color:var(--text3)'};">${extNeto>0?'+'+fmt(Math.round(extNeto))+' pl':'GLA actual cubre'}</td>
       <td>${badge(s/cap)}</td>
-      <td style="font-size:11px;color:var(--text3)">${ext>0?`Contratar ~${fmt(Math.ceil(ext/50)*50)} pl en GLA`:'AZQ suficiente'}</td>
+      <td style="font-size:11px;color:var(--text3)">${ext>0?`GLA: ~${fmt(Math.ceil(ext/50)*50)} pl total (${fmt(glaActual)} pl actuales)`:'AZQ suficiente'}</td>
     </tr>`;
   }).join('');
   document.getElementById('fv-externo-table').innerHTML = `
     <div class="detail-panel" style="display:block;margin-top:16px">
-      <div class="detail-panel-header"><div class="detail-panel-title">📋 Proyección mensual necesidad almacén externo · 2026</div></div>
+      <div class="detail-panel-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div class="detail-panel-title">📋 Proyección mensual necesidad almacén externo · ${modeLabel}</div>
+        <div style="font-size:11px;color:var(--text3)">GLA actual: ${fmt(glaActual)} pl</div>
+      </div>
       <div class="detail-panel-body" style="padding:0;overflow-x:auto">
         <table class="data-table">
-          <thead><tr><th>Mes</th><th>Stock total (pl)</th><th>En AZQ (pl)</th><th>Necesidad GLA (pl)</th><th>Estado AZQ</th><th>Recomendación</th></tr></thead>
+          <thead><tr>
+            <th>Mes</th><th>Stock (pl)</th><th>En AZQ (pl)</th>
+            <th>Exceso→GLA (pl)</th><th>Adicional s/GLA actual</th>
+            <th>Estado AZQ</th><th>Acción recomendada</th>
+          </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
