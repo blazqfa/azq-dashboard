@@ -2044,11 +2044,30 @@ function fvSimGLA() {
       result.push({ glaStock: null, entradasGLA: 0, salidasGLA: 0, azqGW: null, isFuture: false });
       continue;
     }
-    // Mes ancla → punto de partida real GW, sin movimiento GLA ese mes
+    // Mes ancla → aplicar flujo real del mes (producción + ventas + saturación)
     if(i === lastRealIdx) {
       azqStock = gwStockActual > 0 ? gwStockActual
         : Math.max(0, Math.round((FV.stockReal[i] ?? FV.stockIni) * ratioGW));
-      result.push({ glaStock: Math.round(glaStk), entradasGLA: 0, salidasGLA: 0, azqGW: Math.round(azqStock), isFuture: false });
+      const prodPlA = (prodOPAL[i] || 0) / pppO * 1000;
+      const ventPlA = fvVentasOPAL(i)    / pppO * 1000;
+      azqStock += prodPlA;
+      let entradasGLAA = 0;
+      if(azqStock > umbralGLA) {
+        entradasGLAA = azqStock - umbralGLA;
+        azqStock     = umbralGLA;
+        glaStk      += entradasGLAA;
+      }
+      azqStock -= ventPlA;
+      let salidasGLAA = 0;
+      if(azqStock < 0) {
+        salidasGLAA = Math.min(-azqStock, glaStk);
+        glaStk     -= salidasGLAA;
+        azqStock   += salidasGLAA;
+        if(azqStock < 0) azqStock = 0;
+      }
+      glaStk   = Math.max(0, glaStk);
+      azqStock = Math.max(0, azqStock);
+      result.push({ glaStock: Math.round(glaStk), entradasGLA: Math.round(entradasGLAA), salidasGLA: Math.round(salidasGLAA), azqGW: Math.round(azqStock), isFuture: true });
       continue;
     }
 
