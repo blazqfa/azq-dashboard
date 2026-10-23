@@ -1934,24 +1934,102 @@ function fvStockIniFiltered() {
   return totalStk; // ambos
 }
 
-function fvExcesoExterno() {
-  const stock = fvCalcStock();
-  const capVal = FV.capAZQ;  // getter — lee automáticamente de state.caps
-  // El exceso = lo que sale de AZQ y va a GLA
-  // Para GW solo: el stock real actual de GLA es el punto de partida
-  return stock.map(s => s!==null ? Math.max(0, s-capVal) : null);
+// ──────────────────────────────────────────────────────────────────────────
+// fvSimGLA() — Simulación mes a mes del stock en GLA externo (solo GW)
+//
+// Lógica real:
+//   - AZQ produce GW → si AZQ_GW >= capGW → el exceso va a GLA (entrada)
+//   - Ventas GW se atienden desde AZQ_GW primero; si AZQ_GW < ventas → se
+//     trae de GLA lo que falta (salida GLA)
+//   - Si horno parado (prodGW=0) y hay stock en GLA → las ventas GW vacían
+//     AZQ y luego drenan GLA: el stock GLA BAJA (traída a instalaciones)
+//   - El stock GLA nunca puede bajar de 0
+//
+// Devuelve array de objetos por mes:
+//   { glaStock, entradasGLA, salidasGLA, azqGW }
+// ──────────────────────────────────────────────────────────────────────────
+function fvSimGLA() {
+  const pppO   = FV_PARAMS.pppOpal;
+  const prodOPAL = FV.prodOPAL;
+  const n      = FV.meses.length;
+  const capAZQ = FV.capAZQ;  // capacidad total AZQ (pallets)
+  const glaIni = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
+
+  // Punto de partida: último stock real conocido en AZQ (total, filtramos GW estimando)
+  // Estimamos GW en AZQ como total - BTY
+  const btyStk = state.zones.filter(z=>z.id==='bty').reduce((s,z)=>s+(z.stock||0),0);
+  const totalIni = FV.stockIni;
+
+  // Recorrer meses cronológicamente
+  let azqGW  = Math.max(0, totalIni - btyStk);  // Stock GW en AZQ al inicio
+  let glaStk = glaIni;
+  let lastRealIdx = -1;
+  // Buscar último mes con stock real
+  for(let i=0;i<n;i++) { if(FV.stockReal[i]!==null) lastRealIdx=i; }
+
+  const result = [];
+
+  for(let i=0;i<n;i++) {
+    // Si hay stock real AZQ para este mes → anclar azqGW (estimado como total-BTY)
+    if(FV.stockReal[i]!==null) {
+      const btyEstim = btyStk; // BTY no varía mucho — usamos referencia
+      azqGW = Math.max(0, FV.stockReal[i] - btyEstim);
+      // No tocamos glaStk con datos reales (no tenemos histórico mes a mes de GLA)
+      result.push({ glaStock: glaStk, entradasGLA: 0, salidasGLA: 0, azqGW, hasReal: true });
+      continue;
+    }
+    if(i < lastRealIdx) {
+      result.push({ glaStock: glaStk, entradasGLA: 0, salidasGLA: 0, azqGW, hasReal: false });
+      continue;
+    }
+
+    // Producción GW este mes (en pallets)
+    const prodPl = prodOPAL[i] / pppO * 1000;
+    // Ventas GW este mes (en pallets)
+    const ventPl = fvVentasOPAL(i) / pppO * 1000;
+
+    // 1. Producción entra a AZQ
+    azqGW += prodPl;
+
+    // 2. Si AZQ supera capacidad GW → el exceso va a GLA
+    //    Capacidad GW = capAZQ menos lo que ocupa BTY
+    const capGW = capAZQ - btyStk;  // simplificación: BTY ocupa lo mismo
+    let entradasGLA = 0;
+    if(azqGW > capGW) {
+      entradasGLA = azqGW - capGW;
+      azqGW = capGW;
+      glaStk += entradasGLA;
+    }
+
+    // 3. Ventas salen de AZQ primero
+    let salidasGLA = 0;
+    azqGW -= ventPl;
+
+    // 4. Si AZQ queda negativo → se trae de GLA lo que falta
+    if(azqGW < 0) {
+      salidasGLA = Math.min(Math.abs(azqGW), glaStk);  // no se puede traer más de lo que hay
+      glaStk    -= salidasGLA;
+      azqGW     += salidasGLA;
+      if(azqGW < 0) azqGW = 0;  // déficit real (ni AZQ ni GLA cubren ventas)
+    }
+
+    glaStk = Math.max(0, glaStk);
+    azqGW  = Math.max(0, azqGW);
+
+    result.push({ glaStock: Math.round(glaStk), entradasGLA: Math.round(entradasGLA), salidasGLA: Math.round(salidasGLA), azqGW: Math.round(azqGW), hasReal: false });
+  }
+  return result;
 }
 
-// Necesidad neta en GLA teniendo en cuenta el stock real ya allí
-// (lo que YA está en GLA no hay que "contratar" de nuevo)
+// Compatibilidad: fvExcesoExterno() ahora devuelve el stock en GLA de la simulación
+function fvExcesoExterno() {
+  const sim = fvSimGLA();
+  return sim.map(m => m.hasReal ? null : m.glaStock);
+}
+
+// Necesidad neta = lo que hay en GLA (la simulación ya parte del stock real)
 function fvNecesidadNetaGLA() {
-  const exceso = fvExcesoExterno();
-  const glaActual = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
-  return exceso.map(e => {
-    if(e === null) return null;
-    // Necesidad adicional sobre lo que ya hay contratado en GLA
-    return Math.max(0, e - glaActual);
-  });
+  return fvExcesoExterno();
 }
 
 function renderFvCosteSim() {
@@ -1964,34 +2042,42 @@ function renderFvCosteSim() {
   const tarifaTransp  = parseFloat(document.getElementById('gla-tarifa-transp')?.value)  || 140;   // €/viaje
   const viajesMes     = parseFloat(document.getElementById('gla-tarifa-viajes')?.value)  || 4;     // viajes/mes estimados
 
+  // Simulación mes a mes GLA (lógica real: entradas cuando AZQ lleno, salidas cuando ventas > AZQ)
+  const sim = fvSimGLA();
+
   // Meses 2026 (índices 12-23)
   const meses2026 = FV.meses.slice(12, 24);
-  const ext2026   = externo.slice(12, 24);
+  const sim2026   = sim.slice(12, 24);
 
   // KPIs
   let totalCoste = 0, maxPl = 0, mesesActivos = 0;
-  const costes = ext2026.map((e, idx) => {
-    if(e === null) return null;
-    const plTotal   = Math.max(glaActual, e);          // Total en GLA este mes
-    const plNuevos  = Math.max(0, e - glaActual);      // Pallets que entran nuevos (delta)
-    const costeAlm  = plTotal * tarifaAlm;             // Almacenaje mensual sobre el total
-    const costeEntr = plNuevos * tarifaEntrada;        // Entrada: solo sobre nuevos pallets
-    const costeMan  = plNuevos * tarifaMan;            // Manipulación: solo sobre movimientos
-    const costeTrp  = viajesMes * tarifaTransp;        // Transporte fijo mensual
+  const costes = sim2026.map((m, idx) => {
+    if(m.hasReal) return null;
+    const plTotal   = m.glaStock;                      // Stock real en GLA este mes
+    const entr      = m.entradasGLA;                   // Pallets que ENTRAN a GLA
+    const sal       = m.salidasGLA;                    // Pallets que SALEN de GLA (traída a AZQ)
+    const mov       = entr + sal;                      // Total movimientos para manipulación
+    const costeAlm  = plTotal  * tarifaAlm;            // Almacenaje: sobre stock total GLA
+    const costeEntr = entr     * tarifaEntrada;        // Entrada: solo los que llegan a GLA
+    const costeMan  = mov      * tarifaMan;            // Manipulación: entradas + salidas
+    // Transporte: solo si hay movimiento real ese mes
+    const costeTrp  = mov > 0 ? viajesMes * tarifaTransp : 0;
     const coste     = costeAlm + costeEntr + costeMan + costeTrp;
     totalCoste += coste; mesesActivos++;
     if(plTotal > maxPl) maxPl = plTotal;
-    return { mes: meses2026[idx], plExceso: e, plTotal, plNuevos, costeAlm, costeEntr, costeMan, costeTrp, coste };
+    return { mes: meses2026[idx], plTotal, entr, sal, costeAlm, costeEntr, costeMan, costeTrp, coste };
   });
 
   // KPI tiles
   const kpiEl = document.getElementById('fv-coste-sim-kpis');
   if(kpiEl) {
+    const totalEntr = costes.filter(Boolean).reduce((s,c)=>s+c.entr,0);
+    const totalSal  = costes.filter(Boolean).reduce((s,c)=>s+c.sal,0);
     kpiEl.innerHTML = [
-      { label:'Coste total estimado 2026', value:`${fmt(Math.round(totalCoste))} €`, sub:`Almacenaje + Entradas + Manipulación + Transporte`, color:'var(--danger)' },
-      { label:'Pico máx. pallets en GLA', value:`${fmt(Math.round(maxPl))} pl`, sub:`Stock GLA actual: ${fmt(glaActual)} pl`, color:'var(--accent)' },
-      { label:'Coste medio mensual', value:`${fmt(Math.round(totalCoste/Math.max(1,mesesActivos)))} €/mes`, sub:`Transp. fijo: ${fmt(Math.round(viajesMes*tarifaTransp))} €/mes (${viajesMes} viajes)`, color:'var(--warn)' },
-      { label:'Solo almacenaje (pico)', value:`${fmt(Math.round(maxPl*tarifaAlm))} €/mes`, sub:`${tarifaAlm} €/pl/mes × ${fmt(Math.round(maxPl))} pl pico`, color:'var(--ok)' },
+      { label:'Coste total estimado 2026', value:`${fmt(Math.round(totalCoste))} €`, sub:`Alm. + Entradas + Manip. + Transp.`, color:'var(--danger)' },
+      { label:'Pico stock en GLA', value:`${fmt(Math.round(maxPl))} pl`, sub:`Stock GLA hoy: ${fmt(glaActual)} pl`, color:'var(--accent)' },
+      { label:'Entradas / Salidas GLA 2026', value:`${fmt(Math.round(totalEntr))} / ${fmt(Math.round(totalSal))} pl`, sub:`Entradas=AZQ lleno · Salidas=traída a instalaciones`, color:'var(--warn)' },
+      { label:'Coste medio mensual', value:`${fmt(Math.round(totalCoste/Math.max(1,mesesActivos)))} €/mes`, sub:`Sobre ${mesesActivos} meses con actividad GLA`, color:'var(--ok)' },
     ].map(k=>`<div style="flex:1;min-width:170px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;border-top:3px solid ${k.color}">
       <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${k.label}</div>
       <div style="font-size:20px;font-weight:800;color:${k.color}">${k.value}</div>
@@ -2003,14 +2089,16 @@ function renderFvCosteSim() {
   const tableEl = document.getElementById('fv-coste-sim-table');
   if(!tableEl) return;
   const rows = costes.map(c => {
-    if(!c) return `<tr><td colspan="6" style="color:var(--text3);font-size:11px">Sin datos</td></tr>`;
+    if(!c) return `<tr><td colspan="7" style="color:var(--text3);font-size:11px;text-align:center">Mes con dato real — sin proyección</td></tr>`;
+    const noProd = c.entr === 0;
     return `<tr>
       <td style="font-weight:600">${c.mes}</td>
-      <td style="color:var(--accent);font-weight:600">${fmt(Math.round(c.plTotal))} pl</td>
-      <td style="color:${c.plNuevos>0?'var(--warn)':'var(--text3)'}">${c.plNuevos>0?'+'+fmt(Math.round(c.plNuevos))+' pl':'—'}</td>
+      <td style="color:var(--accent);font-weight:600">${fmt(c.plTotal)} pl</td>
+      <td style="color:${c.entr>0?'var(--danger)':'var(--text3)'}">${c.entr>0?'↑ +'+fmt(c.entr)+' pl':'—'}</td>
+      <td style="color:${c.sal>0?'var(--ok)':'var(--text3)'}">${c.sal>0?'↓ −'+fmt(c.sal)+' pl':'—'}</td>
       <td style="color:var(--text2)">${fmt(Math.round(c.costeAlm))} €</td>
       <td style="color:var(--text2)">${fmt(Math.round(c.costeEntr+c.costeMan+c.costeTrp))} €</td>
-      <td style="font-weight:700;color:var(--danger)">${fmt(Math.round(c.coste))} €</td>
+      <td style="font-weight:700;color:${c.plTotal>0?'var(--danger)':'var(--text3)'}">${c.plTotal>0?fmt(Math.round(c.coste))+' €':'—'}</td>
     </tr>`;
   }).join('');
 
@@ -2019,24 +2107,25 @@ function renderFvCosteSim() {
       <table class="data-table">
         <thead><tr>
           <th>Mes 2026</th>
-          <th>Pallets en GLA</th>
-          <th>Nuevos pl (delta)</th>
+          <th>Stock GLA (pl)</th>
+          <th>Entradas GLA ↑</th>
+          <th>Salidas GLA ↓</th>
           <th>Almacenaje (€)</th>
-          <th>Entrada+Manip+Transp (€)</th>
+          <th>Entradas+Manip+Transp (€)</th>
           <th>Coste total mes (€)</th>
         </tr></thead>
         <tbody>${rows}</tbody>
         <tfoot>
           <tr style="background:var(--bg);font-weight:700">
-            <td colspan="5" style="text-align:right;padding-right:12px">TOTAL ESTIMADO 2026</td>
+            <td colspan="6" style="text-align:right;padding-right:12px">TOTAL ESTIMADO 2026</td>
             <td style="color:var(--danger);font-size:15px">${fmt(Math.round(totalCoste))} €</td>
           </tr>
         </tfoot>
       </table>
     </div>
     <div style="margin-top:8px;font-size:10px;color:var(--text3);padding:6px 10px;background:#F4F5F7;border-radius:6px">
-      📋 Tarifas aplicadas: Almacenaje ${tarifaAlm} €/pl/mes · Entrada ${tarifaEntrada} €/pl · Manipulación E/S ${tarifaMan} €/pl · Transporte ${tarifaTransp} €/viaje × ${viajesMes} viajes/mes.
-      Stock GLA actual: ${fmt(glaActual)} pl. Los "pallets nuevos" son los que superan el stock GLA actual cada mes.
+      📋 Modelo: <b>Entradas GLA</b> = pallets que salen de AZQ cuando está lleno · <b>Salidas GLA</b> = pallets que vuelven a AZQ cuando ventas > producción GW.
+      Tarifas: ${tarifaAlm} €/pl/mes almacenaje · ${tarifaEntrada} €/pl entrada · ${tarifaMan} €/pl manip. E/S · ${tarifaTransp} €/viaje × ${viajesMes} viajes/mes (solo si hay movimiento).
     </div>`;
 }
 
@@ -2320,30 +2409,47 @@ function renderFvPvVTable() {
 }
 
 function renderFvExternoChart() {
-  const externo = fvExcesoExterno();
-  const ext2026 = externo.slice(12);  // meses 13-36 (2026+2027)
+  const sim = fvSimGLA();
+  const sim2026 = sim.slice(12);  // 2026+2027
   const meses2026 = FV.meses.slice(12);
-  // Actualizar títulos y badge según modo material
+  const glaStocks  = sim2026.map(m => m.hasReal ? null : m.glaStock);
+  const entradas   = sim2026.map(m => m.hasReal ? null : m.entradasGLA);
+  const salidas    = sim2026.map(m => m.hasReal ? null : m.salidasGLA);
+
   const usGW  = typeof fvUseGW  !== 'undefined' ? fvUseGW  : true;
   const usBTY = typeof fvUseBTY !== 'undefined' ? fvUseBTY : false;
   const modeLabel = usGW && usBTY ? 'GW + BTY' : usGW ? 'Solo GW' : 'Solo BTY';
   const glaAct = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
   const titleEl = document.getElementById('fv-externo-chart-title');
-  if(titleEl) titleEl.textContent = `Pallets en almacén externo (${modeLabel}) · 2026–2027`;
+  if(titleEl) titleEl.textContent = `Stock en almacén externo GLA (${modeLabel}) · 2026–2027`;
   const subEl = document.getElementById('fv-externo-subtitle');
   if(subEl) subEl.textContent = `${modeLabel} · GLA actual: ${fmt(glaAct)} pl`;
   if(fvCharts.externo) fvCharts.externo.destroy();
   const ctx = document.getElementById('chartFvExterno')?.getContext('2d');
   if(!ctx) return;
-  const colors = ext2026.map(e=>e>0?'rgba(192,57,43,.75)':'rgba(30,123,75,.6)');
+  // Color: rojo si entradas (AZQ lleno→sale a GLA), verde si salidas (horno parado→se trae), naranja si hay stock sin movimiento
+  const colors = sim2026.map(m => {
+    if(m.hasReal) return 'rgba(180,180,180,.4)';
+    if(m.entradasGLA > 0) return 'rgba(192,57,43,.75)';   // rojo: pallets van a GLA
+    if(m.salidasGLA  > 0) return 'rgba(30,123,75,.7)';    // verde: pallets vuelven a AZQ
+    if(m.glaStock    > 0) return 'rgba(27,79,145,.6)';    // azul: stock estático en GLA
+    return 'rgba(180,180,180,.3)';
+  });
   fvCharts.externo = new Chart(ctx, {
     type:'bar',
     data:{labels:meses2026,datasets:[
-      {label:'Pallets necesarios en GLA',data:ext2026,backgroundColor:colors,borderRadius:4},
+      {label:'Stock en GLA',data:glaStocks,backgroundColor:colors,borderRadius:4},
     ]},
     options:{
       responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.parsed.y>0?fmt(Math.round(c.parsed.y))+' pl en GLA':'Dentro de AZQ'}`}}},
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>{
+        const m = sim2026[c.dataIndex];
+        if(!m || m.hasReal) return 'Dato real (sin proyección)';
+        const parts = [`${fmt(m.glaStock)} pl en GLA`];
+        if(m.entradasGLA>0) parts.push(`↑ ${fmt(m.entradasGLA)} pl entran (AZQ lleno)`);
+        if(m.salidasGLA>0)  parts.push(`↓ ${fmt(m.salidasGLA)} pl salen (traída a AZQ)`);
+        return parts;
+      }}}},
       scales:{
         x:{grid:{display:false},ticks:{font:{size:11},color:'#6B6860'}},
         y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:v=>fmt(v),font:{size:11},color:'#6B6860'},
@@ -2351,51 +2457,62 @@ function renderFvExternoChart() {
       }
     }
   });
-  // Alert
-  const mesesNec = ext2026.filter(e=>e&&e>0).length;
-  const maxExt = Math.max(...ext2026.filter(e=>e!==null));
-  const mesesCrit = meses2026.filter((_,i)=>ext2026[i]>0).join(', ');
-  document.getElementById('fv-externo-alert').innerHTML = mesesNec>0
-    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    <span>GLA necesario durante <strong>${mesesNec} meses (2026–2027)</strong>, pico máximo <strong>${fmt(Math.round(maxExt))} pl</strong>. Meses críticos: ${mesesCrit}.</span>`
-    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg><span>AZQ suficiente para toda la previsión 2026–2027.</span>`;
+  // Alert — basada en la simulación
+  const mesesConGLA = sim2026.filter(m=>!m.hasReal && m.glaStock>0).length;
+  const maxGLA = sim2026.filter(m=>!m.hasReal).reduce((mx,m)=>Math.max(mx,m.glaStock||0),0);
+  const mesesEntradas = meses2026.filter((_,i)=>!sim2026[i].hasReal && sim2026[i].entradasGLA>0).join(', ');
+  const mesesSalidas  = meses2026.filter((_,i)=>!sim2026[i].hasReal && sim2026[i].salidasGLA>0).join(', ');
+  let alertHtml = '';
+  if(mesesConGLA>0) {
+    alertHtml = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span>GLA activo durante <strong>${mesesConGLA} meses (2026–2027)</strong>, pico <strong>${fmt(Math.round(maxGLA))} pl</strong>.
+    ${mesesEntradas?`🔴 <b>Entradas</b> (AZQ lleno): ${mesesEntradas}.`:''}
+    ${mesesSalidas?`🟢 <b>Salidas</b> (traída a AZQ): ${mesesSalidas}.`:''}</span>`;
+  } else {
+    alertHtml = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg><span>AZQ suficiente — no se proyectan entradas a GLA en 2026–2027.</span>`;
+  }
+  document.getElementById('fv-externo-alert').innerHTML = alertHtml;
 }
 
 function renderFvExternoTable() {
-  const stock = fvCalcStock();
-  const externo = fvExcesoExterno();
-  const cap = FV.capAZQ;
+  const sim = fvSimGLA();
   const glaActual = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
   const usGW  = typeof fvUseGW  !== 'undefined' ? fvUseGW  : true;
   const usBTY = typeof fvUseBTY !== 'undefined' ? fvUseBTY : false;
   const modeLabel = usGW && usBTY ? 'GW + BTY' : usGW ? 'Solo GW' : 'Solo BTY';
+
   const rows = FV.meses.slice(12).map((m,i)=>{
-    const s=stock[i+12]; if(s===null) return `<tr><td>${m}</td><td colspan="6" style="color:var(--text3);font-size:11px">Sin datos de previsión</td></tr>`;
-    const ext=externo[i+12]||0;
-    const en_azq = Math.min(s,cap);
-    const extNeto = Math.max(0, ext - glaActual); // necesidad adicional sobre GLA actual
+    const s = sim[i+12];
+    if(!s || s.hasReal) return `<tr><td style="font-weight:600">${m}</td><td colspan="5" style="color:var(--text3);font-size:11px">Dato real (sin proyección)</td></tr>`;
+    const entr = s.entradasGLA;
+    const sal  = s.salidasGLA;
+    let estado = '', estadoColor = 'var(--text3)';
+    if(entr > 0) { estado = `↑ AZQ lleno — ${fmt(entr)} pl salen a GLA`; estadoColor = 'var(--danger)'; }
+    else if(sal > 0) { estado = `↓ Traída a AZQ — ${fmt(sal)} pl de GLA`; estadoColor = 'var(--ok)'; }
+    else if(s.glaStock > 0) { estado = 'Stock GLA estático'; estadoColor = 'var(--accent)'; }
+    else { estado = 'GLA vacío'; }
     return `<tr>
-      <td>${m}</td>
-      <td>${fmt(s)}</td>
-      <td style="color:var(--ok);font-weight:600">${fmt(en_azq)}</td>
-      <td style="${ext>0?'color:var(--danger);font-weight:600':'color:var(--text3)'}">${ext>0?fmt(ext):'—'}</td>
-      <td style="${extNeto>0?'color:var(--warn);font-weight:600':'color:var(--text3)'};">${extNeto>0?'+'+fmt(Math.round(extNeto))+' pl':'GLA actual cubre'}</td>
-      <td>${badge(s/cap)}</td>
-      <td style="font-size:11px;color:var(--text3)">${ext>0?`GLA: ~${fmt(Math.ceil(ext/50)*50)} pl total (${fmt(glaActual)} pl actuales)`:'AZQ suficiente'}</td>
+      <td style="font-weight:600">${m}</td>
+      <td style="color:var(--accent);font-weight:700">${fmt(s.glaStock)} pl</td>
+      <td style="color:${entr>0?'var(--danger)':'var(--text3)'}">${entr>0?'↑ +'+fmt(entr)+' pl':'—'}</td>
+      <td style="color:${sal>0?'var(--ok)':'var(--text3)'}">${sal>0?'↓ −'+fmt(sal)+' pl':'—'}</td>
+      <td style="color:var(--text2);font-size:11px">${fmt(s.azqGW)} pl</td>
+      <td style="color:${estadoColor};font-size:11px;font-weight:600">${estado}</td>
     </tr>`;
   }).join('');
+
   document.getElementById('fv-externo-table').innerHTML = `
     <div class="detail-panel" style="display:block;margin-top:16px">
       <div class="detail-panel-header" style="display:flex;align-items:center;justify-content:space-between">
-        <div class="detail-panel-title">📋 Proyección mensual necesidad almacén externo · ${modeLabel}</div>
+        <div class="detail-panel-title">📋 Proyección mensual almacén externo GLA · ${modeLabel}</div>
         <div style="font-size:11px;color:var(--text3)">GLA actual: ${fmt(glaActual)} pl</div>
       </div>
       <div class="detail-panel-body" style="padding:0;overflow-x:auto">
         <table class="data-table">
           <thead><tr>
-            <th>Mes</th><th>Stock (pl)</th><th>En AZQ (pl)</th>
-            <th>Exceso→GLA (pl)</th><th>Adicional s/GLA actual</th>
-            <th>Estado AZQ</th><th>Acción recomendada</th>
+            <th>Mes</th><th>Stock GLA (pl)</th>
+            <th>Entradas GLA ↑</th><th>Salidas GLA ↓</th>
+            <th>Stock GW en AZQ</th><th>Situación</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
