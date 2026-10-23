@@ -2252,7 +2252,7 @@ function renderFabVentas() {
 
 function renderFvKPIs() {
   const stock = fvCalcStock();
-  const cap = FV.capAZQ;
+  const capAZQ = FV.capAZQ;
   const externo = fvExcesoExterno();
   const mesesConExterno = externo.slice(12).filter(e=>e>0).length;
   const maxExterno = Math.max(...externo.filter(e=>e!==null));
@@ -2263,7 +2263,7 @@ function renderFvKPIs() {
   const ratio = totalProd2026>0 ? totalVentas2026/totalProd2026*100 : 0;
 
   document.getElementById('fv-kpi-row').innerHTML = [
-    {label:'Stock GW en AZQ (hoy)', value:fmt(state.zones.filter(z=>z.id==='gw').reduce((s,z)=>s+(z.stock||0),0))+' pl', sub:`Cap. GW: ${fmt(cap('gw'))} pl`, pct:state.zones.filter(z=>z.id==='gw').reduce((s,z)=>s+(z.stock||0),0)/cap('gw'), zone:'gw'},
+    {label:'Stock GW en AZQ (hoy)', value:fmt(state.zones.filter(z=>z.id==='gw').reduce((s,z)=>s+(z.stock||0),0))+' pl', sub:`Cap. GW: ${fmt(state.caps.gw||7573)} pl`, pct:state.zones.filter(z=>z.id==='gw').reduce((s,z)=>s+(z.stock||0),0)/(state.caps.gw||7573), zone:'gw'},
     {label:'Meses con necesidad GLA en 2026', value:fmt(mesesConExterno)+' meses', sub:`de 12 meses presupuestados`, pct:mesesConExterno/12, zone:null},
     {label:'Pico máx. almacén externo', value:fmt(maxExterno)+' pl', sub:'necesidad punta en 2026', pct:Math.min(1,maxExterno/5000), zone:null},
     {label:'Cobertura ventas / producción', value:ratio.toFixed(1)+'%', sub:`Prod: ${fmt(Math.round(totalProd2026))} Kpz | Vta: ${fmt(Math.round(totalVentas2026))} Kpz`, pct:Math.min(1,ratio/100), zone:null},
