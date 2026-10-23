@@ -531,12 +531,7 @@
                   <input type="number" id="gla-tarifa-viajes" value="4" step="1" min="0" style="width:45px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px" onchange="renderFvCosteSim()">
                 </div>
                 <div style="display:flex;align-items:center;gap:5px;margin-top:4px;padding-top:4px;border-top:1px solid var(--border2)">
-                  <label style="font-size:11px;color:var(--text2)">Colchón saturación AZQ (pl):</label>
-                  <input type="number" id="gla-saturacion" value="2000" step="100" min="0"
-                    style="width:65px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px;font-weight:600"
-                    title="Pallets de margen antes de saturación: cuando AZQ supera (capacidad − colchón), el exceso va a GLA"
-                    onchange="renderFvExternoChart();renderFvExternoTable();renderFvCosteSim()">
-                  <span style="font-size:10px;color:var(--text3)" title="Umbral real = Capacidad AZQ − colchón">ℹ️ umbral real = cap. AZQ − colchón</span>
+                  <span style="font-size:11px;color:var(--text3)">🔶 Colchón saturación: configurable en <strong>⚙️ Configuración → Capacidades</strong></span>
                 </div>
                 <button class="btn btn-primary" onclick="renderFvCosteSim()" style="font-size:11px;padding:4px 12px">Recalcular</button>
               </div>
@@ -751,6 +746,17 @@
               <input type="number" id="cap-emb" value="4030" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px"></div>
             <div><label style="color:var(--text3);display:block;margin-bottom:4px">Cap. GLA externo</label>
               <input type="number" id="cap-gla" value="1500" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px"></div>
+            <div style="grid-column:1/-1;border-top:1px solid var(--border2);padding-top:10px;margin-top:2px">
+              <label style="color:var(--text3);display:block;margin-bottom:4px;font-weight:700">
+                🔶 Colchón de saturación GW (pl)
+                <span style="font-weight:400;color:var(--text3);font-size:11px"> — cuando AZQ supera (Cap. Total GW − colchón), el exceso va a GLA externo</span>
+              </label>
+              <div style="display:flex;align-items:center;gap:10px">
+                <input type="number" id="gla-saturacion" value="2000" step="100" min="0"
+                  style="width:120px;padding:7px 10px;border:2px solid var(--warn);border-radius:6px;font-size:14px;font-weight:700;color:var(--warn)">
+                <span id="cap-saturacion-display" style="font-size:12px;color:var(--text2)">Umbral real = calculando…</span>
+              </div>
+            </div>
           </div>
           <button class="btn btn-primary" onclick="updateCapacities()" style="margin-top:12px">Aplicar capacidades</button>
         </div>
@@ -1624,14 +1630,30 @@ function updateCapacities() {
   state.caps.ag   = parseInt(document.getElementById('cap-ag').value)||3342;
   state.caps.emb  = parseInt(document.getElementById('cap-emb').value)||4030;
   state.caps.gla  = parseInt(document.getElementById('cap-gla').value)||1500;
+  // Guardar colchón saturación GLA
+  state.caps.glaSaturacion = parseInt(document.getElementById('gla-saturacion').value)||2000;
   // Guardar en localStorage para que persistan entre recargas
   try { localStorage.setItem('azq_caps', JSON.stringify(state.caps)); } catch(e){}
+  // Actualizar display umbral real
+  fvActualizarUmbralDisplay();
   renderAll();
   if(typeof fvDetectarDesviaciones === 'function') {
     if(document.getElementById('page-fabventa').classList.contains('active')) renderFabVentas();
     else fvDetectarDesviaciones();
   }
+  // Recalcular previsión GLA con nuevo umbral
+  renderFvExternoChart();
+  renderFvExternoTable();
+  renderFvCosteSim();
   alert('✅ Capacidades guardadas correctamente.');
+}
+
+function fvActualizarUmbralDisplay() {
+  const sat = parseInt(document.getElementById('gla-saturacion')?.value)||2000;
+  const capGW = FV.capAZQ;
+  const umbral = Math.max(0, capGW - sat);
+  const dispEl = document.getElementById('cap-saturacion-display');
+  if(dispEl) dispEl.innerHTML = `Umbral real = <strong style="color:var(--warn)">${fmt(umbral)} pl</strong> &nbsp;(Cap. AZQ ${fmt(capGW)} − colchón ${fmt(sat)})`;
 }
 
 function cargarCapacidadesGuardadas() {
@@ -1644,8 +1666,15 @@ function cargarCapacidadesGuardadas() {
         const el = document.getElementById('cap-'+id);
         if(el && saved[id]) el.value = saved[id];
       });
+      // Restaurar colchón saturación GLA
+      if(saved.glaSaturacion) {
+        const satEl = document.getElementById('gla-saturacion');
+        if(satEl) satEl.value = saved.glaSaturacion;
+      }
     }
   } catch(e){}
+  // Mostrar umbral real al arranque
+  setTimeout(fvActualizarUmbralDisplay, 100);
 }
 
 function updateLastUpdate() {
@@ -1794,14 +1823,20 @@ const FV = {
     4499.92,3553.98,3361.24,2790.87,3159.33,3933.17,3046.43,2091.35,3226.13,3060.39,2741.46,1806.60,   // 2027 (=2025 inicial)
   ],
   ventasOPALic: [
+    // 2025 — datos reales
     3189,2357.41,2154.58,3092.49,3334.49,2844.56,1367.33,856.97,1330.89,2315.01,2936.83,2813.14,
-    3189,2357.41,2154.58,3092.49,3334.49,2844.56,1367.33,856.97,1330.89,2315.01,2936.83,2813.14,
-    3189,2357.41,2154.58,3092.49,3334.49,2844.56,1367.33,856.97,1330.89,2315.01,2936.83,2813.14,
+    // 2026 — datos reales tabla (ic ~91.7%, terzi ~8.3% del total GW)
+    2206.2,3541.0,4590.0,3873.3,3852.0,3657.8,2826.9,2515.5,3278.7,2453.4,2693.1,2581.4,
+    // 2027 — previsión (media 2025–2026 por mes)
+    2697.6,2949.2,3372.3,3482.9,3593.2,3251.2,2097.1,1686.2,2304.8,2384.2,2814.9,2697.3,
   ],
   ventasOPALterzi: [
+    // 2025 — datos reales
     305.60,240.72,274.92,220.24,371.91,127.55,163.56,200.11,168.71,269.37,222.31,352.95,
-    305.60,240.72,274.92,220.24,371.91,127.55,163.56,200.11,168.71,269.37,222.31,352.95,
-    305.60,240.72,274.92,220.24,371.91,127.55,163.56,200.11,168.71,269.37,222.31,352.95,
+    // 2026 — datos reales tabla (terzi ~8.3%)
+    199.9,321.2,415.5,350.7,348.7,330.9,255.9,228.5,296.9,222.6,243.9,231.6,
+    // 2027 — previsión
+    252.7,299.5,305.3,341.1,307.5,294.4,189.9,228.5,272.8,291.8,254.9,323.7,
   ],
 
   // Producción calculada desde líneas (getter dinámico)
