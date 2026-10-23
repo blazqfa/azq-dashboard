@@ -1649,11 +1649,11 @@ function updateCapacities() {
 }
 
 function fvActualizarUmbralDisplay() {
-  const sat = parseInt(document.getElementById('gla-saturacion')?.value)||2000;
-  const capGW = FV.capAZQ;
+  const sat    = parseInt(document.getElementById('gla-saturacion')?.value)||2000;
+  const capGW  = (typeof cap === 'function') ? cap('gw') : 7573;
   const umbral = Math.max(0, capGW - sat);
   const dispEl = document.getElementById('cap-saturacion-display');
-  if(dispEl) dispEl.innerHTML = `Umbral real = <strong style="color:var(--warn)">${fmt(umbral)} pl</strong> &nbsp;(Cap. AZQ ${fmt(capGW)} − colchón ${fmt(sat)})`;
+  if(dispEl) dispEl.innerHTML = `Umbral GW→GLA = <strong style="color:var(--warn)">${fmt(umbral)} pl</strong> &nbsp;<span style="color:var(--text3)">(Cap. GW ${fmt(capGW)} pl − colchón ${fmt(sat)} pl)</span>`;
 }
 
 function cargarCapacidadesGuardadas() {
@@ -1994,13 +1994,16 @@ function fvSimGLA() {
   const pppO      = FV_PARAMS.pppOpal;
   const prodOPAL  = FV.prodOPAL;
   const n         = FV.meses.length;
-  const capAZQ    = FV.capAZQ;
   const glaIni    = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
 
+  // Capacidad GLA usa SOLO zona Glassware (producto terminado GW)
+  // Prov-Bloq, BTY, Embalaje, After Glass no se trasladan a GLA externo
+  const capGW = (typeof cap === 'function') ? cap('gw') : 7573;
+
   // Colchón de saturación configurable (defecto 2000 pl)
-  // Cuando AZQ supera (capAZQ − saturacion), el exceso ya va a GLA
-  const saturacion = parseFloat(document.getElementById('gla-saturacion')?.value) || 2000;
-  const umbralGLA  = Math.max(0, capAZQ - saturacion);  // umbral real de desbordamiento
+  // Cuando stock GW en AZQ supera (capGW − colchón), el exceso va a GLA
+  const saturacion = parseInt(document.getElementById('gla-saturacion')?.value) || 2000;
+  const umbralGLA  = Math.max(0, capGW - saturacion);  // umbral real de desbordamiento
 
   // ── Ancla al mes actual ──
   // lastRealIdx = último mes con dato real AZQ que NO sea futuro.
@@ -2020,9 +2023,17 @@ function fvSimGLA() {
   // Si no hay dato real hasta hoy, usar el mes actual como ancla con stockIni
   if(lastRealIdx < 0) lastRealIdx = currentIdx;
 
-  // Stock GW en AZQ al inicio de la proyección
-  const btyStk = state.zones.filter(z=>z.id==='bty').reduce((s,z)=>s+(z.stock||0),0);
-  let azqStock = Math.max(0, (FV.stockReal[lastRealIdx] ?? FV.stockIni) - btyStk);
+  // Stock GW en AZQ = solo zonas gw+bloq (excluimos BTY, embalaje, etc.)
+  // Si hay stock real por zona disponible, usamos gw+bloq; si no, estimamos desde total − no-GW
+  // Stock GW = solo zona Glassware
+  const gwStockActual = state.zones.filter(z=>z.id==='gw').reduce((s,z)=>s+(z.stock||0),0);
+
+  // Para meses pasados con dato real total AZQ, estimamos GW proporcional a capGW/capTotal
+  const capTotal = FV.capAZQ || 1;
+  const ratioGW  = capGW / capTotal;  // proporción de la cap total que es GW
+
+  let azqStock = gwStockActual > 0 ? gwStockActual
+    : Math.max(0, Math.round((FV.stockReal[lastRealIdx] ?? FV.stockIni) * ratioGW));
 
   let glaStk  = glaIni;
   const result = [];
@@ -2033,9 +2044,10 @@ function fvSimGLA() {
       result.push({ glaStock: null, entradasGLA: 0, salidasGLA: 0, azqGW: null, isFuture: false });
       continue;
     }
-    // Mes ancla → punto de partida real, sin movimiento GLA ese mes
+    // Mes ancla → punto de partida real GW, sin movimiento GLA ese mes
     if(i === lastRealIdx) {
-      azqStock = Math.max(0, (FV.stockReal[i] ?? FV.stockIni) - btyStk);
+      azqStock = gwStockActual > 0 ? gwStockActual
+        : Math.max(0, Math.round((FV.stockReal[i] ?? FV.stockIni) * ratioGW));
       result.push({ glaStock: Math.round(glaStk), entradasGLA: 0, salidasGLA: 0, azqGW: Math.round(azqStock), isFuture: false });
       continue;
     }
