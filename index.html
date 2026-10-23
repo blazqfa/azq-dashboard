@@ -530,6 +530,14 @@
                   <label style="font-size:11px;color:var(--text2)">Viajes/mes:</label>
                   <input type="number" id="gla-tarifa-viajes" value="4" step="1" min="0" style="width:45px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px" onchange="renderFvCosteSim()">
                 </div>
+                <div style="display:flex;align-items:center;gap:5px;margin-top:4px;padding-top:4px;border-top:1px solid var(--border2)">
+                  <label style="font-size:11px;color:var(--text2)">Colchón saturación AZQ (pl):</label>
+                  <input type="number" id="gla-saturacion" value="2000" step="100" min="0"
+                    style="width:65px;padding:4px 6px;border:1px solid var(--border2);border-radius:5px;font-size:12px;font-weight:600"
+                    title="Pallets de margen antes de saturación: cuando AZQ supera (capacidad − colchón), el exceso va a GLA"
+                    onchange="renderFvExternoChart();renderFvExternoTable();renderFvCosteSim()">
+                  <span style="font-size:10px;color:var(--text3)" title="Umbral real = Capacidad AZQ − colchón">ℹ️ umbral real = cap. AZQ − colchón</span>
+                </div>
                 <button class="btn btn-primary" onclick="renderFvCosteSim()" style="font-size:11px;padding:4px 12px">Recalcular</button>
               </div>
             </div>
@@ -1948,64 +1956,80 @@ function fvStockIniFiltered() {
 // porque GLA sigue corriendo aunque AZQ tenga dato real.
 // ──────────────────────────────────────────────────────────────────────────
 function fvSimGLA() {
-  const pppO     = FV_PARAMS.pppOpal;
-  const prodOPAL = FV.prodOPAL;
-  const n        = FV.meses.length;
-  const capAZQ   = FV.capAZQ;
-  const glaIni   = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
+  const pppO      = FV_PARAMS.pppOpal;
+  const prodOPAL  = FV.prodOPAL;
+  const n         = FV.meses.length;
+  const capAZQ    = FV.capAZQ;
+  const glaIni    = typeof fvGlaReal !== 'undefined' ? fvGlaReal : 5771;
 
-  // Último mes con dato real AZQ → punto de partida de la proyección
+  // Colchón de saturación configurable (defecto 2000 pl)
+  // Cuando AZQ supera (capAZQ − saturacion), el exceso ya va a GLA
+  const saturacion = parseFloat(document.getElementById('gla-saturacion')?.value) || 2000;
+  const umbralGLA  = Math.max(0, capAZQ - saturacion);  // umbral real de desbordamiento
+
+  // ── Ancla al mes actual ──
+  // lastRealIdx = último mes con dato real AZQ que NO sea futuro.
+  // FV.meses es ['Ene-25',...] índices 0-35. Mes actual = Oct-26 = índice 21 (0-based: Ene-25=0).
+  // Calculamos dinámicamente: año base 2025 = índice 0; mes base = enero.
+  const now        = new Date();
+  const currentYear = now.getFullYear();
+  const currentMon  = now.getMonth(); // 0=enero
+  // índice = (año - 2025)*12 + mes
+  const currentIdx = Math.min((currentYear - 2025) * 12 + currentMon, n - 1);
+
+  // Último mes con dato real AZQ sin pasar del mes actual
   let lastRealIdx = -1;
-  for(let i=0;i<n;i++) { if(FV.stockReal[i]!==null) lastRealIdx=i; }
+  for(let i = 0; i <= currentIdx; i++) {
+    if(FV.stockReal[i] !== null) lastRealIdx = i;
+  }
+  // Si no hay dato real hasta hoy, usar el mes actual como ancla con stockIni
+  if(lastRealIdx < 0) lastRealIdx = currentIdx;
 
-  // Stock GW en AZQ al inicio de la proyección (desde último real)
-  // Estimamos BTY en AZQ como zona bty del estado actual
+  // Stock GW en AZQ al inicio de la proyección
   const btyStk = state.zones.filter(z=>z.id==='bty').reduce((s,z)=>s+(z.stock||0),0);
-  let azqStock = lastRealIdx>=0
-    ? Math.max(0, FV.stockReal[lastRealIdx] - btyStk)
-    : Math.max(0, FV.stockIni - btyStk);
+  let azqStock = Math.max(0, (FV.stockReal[lastRealIdx] ?? FV.stockIni) - btyStk);
 
-  let glaStk = glaIni;
+  let glaStk  = glaIni;
   const result = [];
 
-  for(let i=0;i<n;i++) {
-    // Antes del inicio de proyección → rellenar con nulos (sin datos)
+  for(let i = 0; i < n; i++) {
+    // Meses anteriores al ancla → sin datos
     if(i < lastRealIdx) {
       result.push({ glaStock: null, entradasGLA: 0, salidasGLA: 0, azqGW: null, isFuture: false });
       continue;
     }
-    // Mes inicio (último real) → anclar sin mover GLA
+    // Mes ancla → punto de partida real, sin movimiento GLA ese mes
     if(i === lastRealIdx) {
-      azqStock = Math.max(0, FV.stockReal[i] - btyStk);
+      azqStock = Math.max(0, (FV.stockReal[i] ?? FV.stockIni) - btyStk);
       result.push({ glaStock: Math.round(glaStk), entradasGLA: 0, salidasGLA: 0, azqGW: Math.round(azqStock), isFuture: false });
       continue;
     }
 
-    // Meses futuros: calcular flujo
-    const prodPl = prodOPAL[i] / pppO * 1000;   // producción GW en pallets
-    const ventPl = fvVentasOPAL(i) / pppO * 1000; // ventas GW en pallets
+    // ── Meses futuros: flujo mensual ──
+    const prodPl = (prodOPAL[i] || 0) / pppO * 1000;    // producción GW en pallets
+    const ventPl = fvVentasOPAL(i)    / pppO * 1000;    // ventas GW en pallets
 
-    // Producción entra a AZQ
+    // 1. Producción entra a AZQ
     azqStock += prodPl;
 
-    // Si AZQ supera capacidad → exceso sale a GLA
+    // 2. Si AZQ supera el umbral de saturación → exceso sale a GLA
     let entradasGLA = 0;
-    if(azqStock > capAZQ) {
-      entradasGLA = azqStock - capAZQ;
-      azqStock    = capAZQ;
+    if(azqStock > umbralGLA) {
+      entradasGLA = azqStock - umbralGLA;
+      azqStock    = umbralGLA;
       glaStk     += entradasGLA;
     }
 
-    // Ventas salen de AZQ
+    // 3. Ventas salen de AZQ
     azqStock -= ventPl;
 
-    // Si AZQ queda negativo → traer de GLA
+    // 4. Si AZQ queda negativo → traer material desde GLA (traída a instalaciones)
     let salidasGLA = 0;
     if(azqStock < 0) {
       salidasGLA = Math.min(-azqStock, glaStk);
       glaStk    -= salidasGLA;
       azqStock  += salidasGLA;
-      if(azqStock < 0) azqStock = 0; // déficit real
+      if(azqStock < 0) azqStock = 0; // déficit real (sin stock en ningún lado)
     }
 
     glaStk   = Math.max(0, glaStk);
@@ -2072,9 +2096,9 @@ function renderFvCosteSim() {
     const totalEntr = costes.filter(Boolean).reduce((s,c)=>s+c.entr,0);
     const totalSal  = costes.filter(Boolean).reduce((s,c)=>s+c.sal,0);
     kpiEl.innerHTML = [
-      { label:'Coste total estimado 2026', value:`${fmt(Math.round(totalCoste))} €`, sub:`Alm. + Entradas + Manip. + Transp.`, color:'var(--danger)' },
+      { label:'Coste total estimado (proyección)', value:`${fmt(Math.round(totalCoste))} €`, sub:`Alm. + Entradas + Manip. + Transp.`, color:'var(--danger)' },
       { label:'Pico stock en GLA', value:`${fmt(Math.round(maxPl))} pl`, sub:`Stock GLA hoy: ${fmt(glaActual)} pl`, color:'var(--accent)' },
-      { label:'Entradas / Salidas GLA 2026', value:`${fmt(Math.round(totalEntr))} / ${fmt(Math.round(totalSal))} pl`, sub:`Entradas=AZQ lleno · Salidas=traída a instalaciones`, color:'var(--warn)' },
+      { label:'Entradas / Salidas GLA (proyección)', value:`${fmt(Math.round(totalEntr))} / ${fmt(Math.round(totalSal))} pl`, sub:`Entradas=AZQ lleno · Salidas=traída a instalaciones`, color:'var(--warn)' },
       { label:'Coste medio mensual', value:`${fmt(Math.round(totalCoste/Math.max(1,mesesActivos)))} €/mes`, sub:`Sobre ${mesesActivos} meses con actividad GLA`, color:'var(--ok)' },
     ].map(k=>`<div style="flex:1;min-width:170px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;border-top:3px solid ${k.color}">
       <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">${k.label}</div>
