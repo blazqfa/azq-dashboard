@@ -1653,9 +1653,9 @@ function updateCapacities() {
 function fvActualizarUmbralDisplay() {
   const sat    = parseInt(document.getElementById('gla-saturacion')?.value)||2000;
   const capGW  = (typeof cap === 'function') ? cap('gw') : 7573;
-  const umbral = Math.max(0, capGW - sat);
+  const umbral = capGW + sat;
   const dispEl = document.getElementById('cap-saturacion-display');
-  if(dispEl) dispEl.innerHTML = `Umbral GW→GLA = <strong style="color:var(--warn)">${fmt(umbral)} pl</strong> &nbsp;<span style="color:var(--text3)">(Cap. GW ${fmt(capGW)} pl − colchón ${fmt(sat)} pl)</span>`;
+  if(dispEl) dispEl.innerHTML = `Umbral GW→GLA = <strong style="color:var(--warn)">${fmt(umbral)} pl</strong> &nbsp;<span style="color:var(--text3)">(Cap. GW ${fmt(capGW)} pl + colchón ${fmt(sat)} pl)</span>`;
 }
 
 function cargarCapacidadesGuardadas() {
@@ -2005,7 +2005,7 @@ function fvSimGLA() {
   // Colchón de saturación configurable (defecto 2000 pl)
   // Cuando stock GW en AZQ supera (capGW − colchón), el exceso va a GLA
   const saturacion = parseInt(document.getElementById('gla-saturacion')?.value) || 2000;
-  const umbralGLA  = Math.max(0, capGW - saturacion);  // umbral real de desbordamiento
+  const umbralGLA  = capGW + saturacion;  // umbral = capacidad GW + colchón de saturación
 
   // ── Ancla al mes actual ──
   // lastRealIdx = último mes con dato real AZQ que NO sea futuro.
