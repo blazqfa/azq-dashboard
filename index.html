@@ -483,12 +483,12 @@
           <div id="fv-material-badge" style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;background:var(--accent-light);color:var(--accent)">Modo: Solo GW</div>
         </div>
 
-        <!-- Stock real GLA -->
+        <!-- Stock real GLA — leído automáticamente desde state.gla -->
         <div style="display:flex;align-items:center;gap:14px;padding:10px 16px;background:#EBF5FB;border:1px solid #AED6F1;border-radius:8px;margin-bottom:14px;flex-wrap:wrap">
           <span style="font-size:12px;font-weight:700;color:#1B4F91">📦 Stock real actual en GLA externo:</span>
-          <input type="number" id="fv-gla-real-input" value="5771" step="10" min="0" style="width:100px;padding:5px 8px;border:1.5px solid #AED6F1;border-radius:6px;font-size:13px;font-weight:700;color:#1B4F91;text-align:center" onchange="fvUpdateGlaReal()">
-          <span style="font-size:12px;color:var(--text3)">pallets — dato real de hoy (tomado del histórico GLA)</span>
-          <span id="fv-gla-real-badge" style="font-size:11px;background:#1B4F91;color:#fff;padding:3px 10px;border-radius:6px;font-weight:700">5.771 pl en GLA ahora</span>
+          <span id="fv-gla-real-badge" style="font-size:13px;background:#1B4F91;color:#fff;padding:4px 14px;border-radius:6px;font-weight:700">— pl en GLA ahora</span>
+          <span style="font-size:12px;color:var(--text3)">pallets totales en GLA · actualizado automáticamente desde el inventario GLA</span>
+          <span style="font-size:11px;color:#888">¿No coincide? Actualiza el inventario GLA en la pestaña principal.</span>
         </div>
 
         <div class="alert alert-warn" id="fv-externo-alert"></div>
@@ -1011,6 +1011,8 @@ function renderAll() {
   setTimeout(layoutPostRender, 0);
   renderGLAPage();
   updateLastUpdate();
+  // Sincronizar stock GLA real desde inventario
+  fvUpdateGlaReal();
 }
 
 function renderAlerts() {
@@ -1879,7 +1881,7 @@ let fvZonasCapacidad = new Set(['gw','bloq','bty']); // BTY + GW + Prov-Bloq por
 // GLA externo SOLO gestiona GW — por defecto solo GW activo
 let fvUseGW = true;
 let fvUseBTY = false;
-let fvGlaReal = 5771;  // Stock real actual en almacén GLA externo
+let fvGlaReal = 5771;  // Stock real GLA — se sobreescribe en fvInit() desde state.gla
 
 function fvMaterialFilter() {
   const chkGW = document.getElementById('fv-chk-gw');
@@ -1909,8 +1911,8 @@ function fvMaterialFilter() {
 }
 
 function fvUpdateGlaReal() {
-  const inp = document.getElementById('fv-gla-real-input');
-  fvGlaReal = parseFloat(inp?.value) || 5771;
+  // Lee automáticamente del inventario GLA real (state.gla)
+  fvGlaReal = state.gla.reduce((s,r)=>s+(r.pl||0),0) || 5771;
   const badge = document.getElementById('fv-gla-real-badge');
   if(badge) badge.textContent = `${fmt(fvGlaReal)} pl en GLA ahora`;
   const sub = document.getElementById('fv-externo-subtitle');
@@ -2044,19 +2046,25 @@ function fvSimGLA() {
       result.push({ glaStock: null, entradasGLA: 0, salidasGLA: 0, azqGW: null, isFuture: false });
       continue;
     }
-    // Mes ancla → aplicar flujo real del mes (producción + ventas + saturación)
+    // Mes ancla (mes actual) → el stock gwStockActual ya refleja producción realizada.
+    // Solo verificamos si hay exceso sobre umbral (posible movimiento pendiente este mes)
+    // y restamos ventas previstas del resto del mes para obtener el stock de cierre.
     if(i === lastRealIdx) {
       azqStock = gwStockActual > 0 ? gwStockActual
         : Math.max(0, Math.round((FV.stockReal[i] ?? FV.stockIni) * ratioGW));
-      const prodPlA = (prodOPAL[i] || 0) / pppO * 1000;
-      const ventPlA = fvVentasOPAL(i)    / pppO * 1000;
-      azqStock += prodPlA;
+      // No sumamos producción: ya está reflejada en el stock actual
       let entradasGLAA = 0;
       if(azqStock > umbralGLA) {
         entradasGLAA = azqStock - umbralGLA;
         azqStock     = umbralGLA;
         glaStk      += entradasGLAA;
       }
+      // Ventas restantes del mes (estimación: ventas mes × fracción días restantes)
+      const hoy = new Date();
+      const diasMes = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate();
+      const diasRestantes = diasMes - hoy.getDate();
+      const fraccion = diasRestantes / diasMes;
+      const ventPlA = fvVentasOPAL(i) / pppO * 1000 * fraccion;
       azqStock -= ventPlA;
       let salidasGLAA = 0;
       if(azqStock < 0) {
@@ -2255,7 +2263,7 @@ function renderFvKPIs() {
   const ratio = totalProd2026>0 ? totalVentas2026/totalProd2026*100 : 0;
 
   document.getElementById('fv-kpi-row').innerHTML = [
-    {label:'Stock actual (ref. abr-26)', value:fmt(stockActual)+' pl', sub:`Cap. AZQ: ${fmt(cap)} pl`, pct:stockActual/cap, zone:null},
+    {label:'Stock GW en AZQ (hoy)', value:fmt(state.zones.filter(z=>z.id==='gw').reduce((s,z)=>s+(z.stock||0),0))+' pl', sub:`Cap. GW: ${fmt(cap('gw'))} pl`, pct:state.zones.filter(z=>z.id==='gw').reduce((s,z)=>s+(z.stock||0),0)/cap('gw'), zone:'gw'},
     {label:'Meses con necesidad GLA en 2026', value:fmt(mesesConExterno)+' meses', sub:`de 12 meses presupuestados`, pct:mesesConExterno/12, zone:null},
     {label:'Pico máx. almacén externo', value:fmt(maxExterno)+' pl', sub:'necesidad punta en 2026', pct:Math.min(1,maxExterno/5000), zone:null},
     {label:'Cobertura ventas / producción', value:ratio.toFixed(1)+'%', sub:`Prod: ${fmt(Math.round(totalProd2026))} Kpz | Vta: ${fmt(Math.round(totalVentas2026))} Kpz`, pct:Math.min(1,ratio/100), zone:null},
