@@ -257,6 +257,18 @@
   #page-maestro .m-toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
   #page-maestro .m-toolbar input,#page-maestro .m-toolbar select{padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);min-width:130px;background:#fff}
   #page-maestro .m-toolbar input:focus,#page-maestro .m-toolbar select:focus{outline:none;border-color:var(--accent)}
+  /* BULK EDIT BAR */
+  #m-bulk-bar{display:none;align-items:center;gap:10px;flex-wrap:wrap;background:#EBF0F9;border:1.5px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:14px}
+  #m-bulk-bar.show{display:flex}
+  #m-bulk-bar .bulk-label{font-weight:700;color:var(--accent);font-size:13px;white-space:nowrap}
+  #m-bulk-bar select,#m-bulk-bar input{padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;background:#fff;color:var(--text)}
+  #m-bulk-bar .bulk-sep{width:1px;height:28px;background:var(--border);margin:0 4px}
+  #m-bulk-bar .bulk-field{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)}
+  /* ROW CHECK */
+  #m-tbody tr.m-sel{background:#EBF0F9!important}
+  #m-tbody tr.m-sel td{background:transparent}
+  .m-check-cell{width:34px;text-align:center;padding:4px 6px!important}
+  .m-row-cb{cursor:pointer;width:15px;height:15px;accent-color:var(--accent)}
   #page-maestro .m-zone-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
   #page-maestro .m-zcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;border-top:3px solid var(--accent)}
   #page-maestro .m-zcard .mzc-zona{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -745,6 +757,28 @@
         </select>
         <button class="btn" onclick="mClearF()">&#10006; Limpiar</button>
       </div>
+      <!-- BULK EDIT BAR -->
+      <div id="m-bulk-bar">
+        <span class="bulk-label">&#9632; <span id="m-bulk-count">0</span> seleccionadas</span>
+        <div class="bulk-sep"></div>
+        <div class="bulk-field"><label>Zona:</label>
+          <select id="mb-zona"><option value="">— sin cambio —</option><option>GLASSWARE</option><option>BTY</option><option>AFTER GLASS / RF</option><option>EMBALAJE</option><option>PROV-BLOQ (GW)</option></select>
+        </div>
+        <div class="bulk-field"><label>Tipo:</label>
+          <select id="mb-tipo"><option value="">— sin cambio —</option><option>SUELO</option><option>ESTANTERIA</option></select>
+        </div>
+        <div class="bulk-field"><label>Lado:</label>
+          <select id="mb-lado"><option value="">— sin cambio —</option><option>SIMPLE</option><option>DOBLE</option></select>
+        </div>
+        <div class="bulk-field"><label>Base:</label>
+          <input id="mb-base" type="number" min="1" placeholder="—" style="width:60px">
+        </div>
+        <div class="bulk-field"><label>Alturas:</label>
+          <input id="mb-alt" type="number" min="1" max="10" placeholder="—" style="width:55px">
+        </div>
+        <button class="btn btn-primary" style="font-size:12px;padding:5px 14px" onclick="mBulkApply()">&#10003; Aplicar a selección</button>
+        <button class="btn btn-danger" style="font-size:12px;padding:5px 10px" onclick="mBulkClear()">&#10006; Cancelar</button>
+      </div>
       <div class="m-stats">
         Total: <strong id="ms-total">0</strong> &nbsp;|&nbsp;
         Mostrando: <strong id="ms-show">0</strong> &nbsp;|&nbsp;
@@ -754,6 +788,7 @@
       <div class="m-table-wrap">
         <table id="m-table">
           <thead><tr>
+            <th class="m-check-cell"><input type="checkbox" id="m-chk-all" class="m-row-cb" title="Seleccionar todos" onchange="mCheckAll(this.checked)"></th>
             <th onclick="mSort('ubi')">UBICACIÓN &#8597;</th>
             <th onclick="mSort('zona')">ZONA &#8597;</th>
             <th onclick="mSort('paridad')">PAR/IMP &#8597;</th>
@@ -4076,15 +4111,18 @@ function mBadge(zona){
   return '<span class="m-badge '+(m[zona]||'')+'">'+(s[zona]||zona)+'</span>';
 }
 
+let mSelected=new Set();
 function mRenderTable(){
   const tb=document.getElementById('m-tbody');
   if(!tb) return;
-  if(!mFiltered.length){tb.innerHTML='<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados</td></tr>';return;}
+  if(!mFiltered.length){tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados</td></tr>';return;}
   tb.innerHTML=mFiltered.map(r=>{
     const ri=mData.indexOf(r);
     const c=mCap(r.base,r.alturas,r.tipoUbi,r.ladoUbi);
     const f=mFml(r.tipoUbi,r.ladoUbi,r.base,r.alturas);
-    return '<tr>'+
+    const sel=mSelected.has(ri);
+    return '<tr'+(sel?' class="m-sel"':'')+'>'+
+      '<td class="m-check-cell"><input type="checkbox" class="m-row-cb"'+(sel?' checked':'')+' onchange="mToggleSel('+ri+',this.checked)"></td>'+
       '<td class="m-ubi">'+r.ubi+'</td>'+
       '<td>'+mBadge(r.zona)+'</td>'+
       '<td style="text-align:center;font-size:11px">'+r.paridad+'</td>'+
@@ -4107,6 +4145,61 @@ function mRenderTable(){
       '</td>'+
     '</tr>';
   }).join('');
+  // sync header checkbox
+  const ca=document.getElementById('m-chk-all');
+  if(ca) ca.checked=mFiltered.length>0&&mFiltered.every(r=>mSelected.has(mData.indexOf(r)));
+}
+function mToggleSel(ri,checked){
+  if(checked) mSelected.add(ri); else mSelected.delete(ri);
+  mUpdateBulkBar();
+  // update row style without re-render
+  const cbs=[...document.querySelectorAll('#m-tbody .m-row-cb')];
+  const rows=[...document.querySelectorAll('#m-tbody tr')];
+  cbs.forEach((cb,i)=>{ if(rows[i]) rows[i].classList.toggle('m-sel',cb.checked); });
+  const ca=document.getElementById('m-chk-all');
+  if(ca) ca.checked=mFiltered.length>0&&mFiltered.every(r=>mSelected.has(mData.indexOf(r)));
+}
+function mCheckAll(checked){
+  mFiltered.forEach(r=>{ const ri=mData.indexOf(r); if(checked) mSelected.add(ri); else mSelected.delete(ri); });
+  mUpdateBulkBar();
+  mRenderTable();
+}
+function mUpdateBulkBar(){
+  const bar=document.getElementById('m-bulk-bar');
+  const cnt=document.getElementById('m-bulk-count');
+  if(!bar) return;
+  if(mSelected.size>0){ bar.classList.add('show'); if(cnt) cnt.textContent=mSelected.size; }
+  else { bar.classList.remove('show'); }
+}
+function mBulkApply(){
+  const zona=document.getElementById('mb-zona').value;
+  const tipo=document.getElementById('mb-tipo').value;
+  const lado=document.getElementById('mb-lado').value;
+  const base=document.getElementById('mb-base').value;
+  const alt=document.getElementById('mb-alt').value;
+  if(!zona&&!tipo&&!lado&&!base&&!alt){ alert('Selecciona al menos un campo a modificar.'); return; }
+  const n=mSelected.size;
+  if(!confirm('Aplicar cambios a '+n+' ubicacion'+(n!==1?'es':'')+'?')) return;
+  mSelected.forEach(ri=>{
+    const r=mData[ri];
+    if(!r) return;
+    if(zona) r.zona=zona;
+    if(tipo) r.tipoUbi=tipo;
+    if(lado) r.ladoUbi=lado;
+    if(base) r.base=parseInt(base);
+    if(alt)  r.alturas=parseInt(alt);
+    r.capTotal=mCap(r.base,r.alturas,r.tipoUbi,r.ladoUbi);
+  });
+  mBulkClear();
+  mFilter();
+  mRenderZoneCards();
+}
+function mBulkClear(){
+  mSelected.clear();
+  ['mb-zona','mb-tipo','mb-lado'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['mb-base','mb-alt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  mUpdateBulkBar();
+  mRenderTable();
 }
 
 function mUpdateStats(){
