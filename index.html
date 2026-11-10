@@ -3991,9 +3991,9 @@ const M_INIT = [{"ubi":"AO001A","base":32,"alturas":3,"capTotal":94,"zona":"GLAS
 let mData=[], mFiltered=[], mSc='ubi', mSa=true;
 
 function mInit(){
+  // Solo carga datos; no renderiza (el DOM puede no estar activo aún)
   try{ const s=localStorage.getItem(M_DK); mData=s?JSON.parse(s):JSON.parse(JSON.stringify(M_INIT)); }
   catch(e){ mData=JSON.parse(JSON.stringify(M_INIT)); }
-  mFilter();
 }
 
 function mCap(base,alt,tipo,lado){
@@ -4170,17 +4170,18 @@ function mExport(){
   XLSX.writeFile(wb,'Maestro_Ubicaciones_AZQ_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 document.getElementById('m-modal-bg')?.addEventListener('click',e=>{if(e.target===e.currentTarget)mCloseModal();});
-// Inicializar al abrir la página
+// Cargar datos en memoria al iniciar; renderizar solo cuando la página esté activa
 (function(){
-  // Cargar datos al hacer click en Maestro
-  const origShow = window.showPage;
+  // Cargar datos en memoria inmediatamente
+  try{ const s=localStorage.getItem(M_DK); mData=s?JSON.parse(s):JSON.parse(JSON.stringify(M_INIT)); }
+  catch(e){ mData=JSON.parse(JSON.stringify(M_INIT)); }
+
+  // Parchear showPage para renderizar cuando se abre Maestro
+  const _origShow = window.showPage;
   window.showPage = function(id){
-    origShow(id);
-    if(id==='maestro' && !mData.length) mInit();
-    else if(id==='maestro') mFilter();
+    _origShow(id);
+    if(id==='maestro') { mFilter(); }
   };
-  // Pre-cargar datos
-  mInit();
 })();
 </script>
 
