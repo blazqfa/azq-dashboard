@@ -4049,19 +4049,19 @@ function mRenderTable(){
       '<td class="m-ubi">'+r.ubi+'</td>'+
       '<td>'+mBadge(r.zona)+'</td>'+
       '<td style="text-align:center;font-size:11px">'+r.paridad+'</td>'+
-      '<td><select onchange="mIE('+ri+','tipoUbi',this.value)" style="font-size:11px">'+
+      '<td><select onchange="mIE('+ri+',\"tipoUbi\",this.value)" style="font-size:11px">'+
         '<option'+(r.tipoUbi==='SUELO'?' selected':'')+'>SUELO</option>'+
         '<option'+(r.tipoUbi==='ESTANTERIA'?' selected':'')+'>ESTANTERIA</option>'+
       '</select></td>'+
-      '<td><select onchange="mIE('+ri+','ladoUbi',this.value)" style="font-size:11px">'+
+      '<td><select onchange="mIE('+ri+',\"ladoUbi\",this.value)" style="font-size:11px">'+
         '<option'+(r.ladoUbi==='SIMPLE'?' selected':'')+'>SIMPLE</option>'+
         '<option'+(r.ladoUbi==='DOBLE'?' selected':'')+'>DOBLE</option>'+
       '</select></td>'+
-      '<td style="text-align:center"><input type="number" value="'+r.base+'" min="1" style="width:52px;text-align:center" onchange="mIE('+ri+','base',+this.value)"></td>'+
-      '<td style="text-align:center"><input type="number" value="'+r.alturas+'" min="1" max="10" style="width:44px;text-align:center" onchange="mIE('+ri+','alturas',+this.value)"></td>'+
+      '<td style="text-align:center"><input type="number" value="'+r.base+'" min="1" style="width:52px;text-align:center" onchange="mIE('+ri+',\"base\",+this.value)"></td>'+
+      '<td style="text-align:center"><input type="number" value="'+r.alturas+'" min="1" max="10" style="width:44px;text-align:center" onchange="mIE('+ri+',\"alturas\",+this.value)"></td>'+
       '<td style="text-align:center;font-weight:700;color:var(--accent)">'+c+' pl</td>'+
       '<td style="font-size:10px;color:var(--text3)">'+f+'='+c+'</td>'+
-      '<td><input type="text" value="'+(r.obs||'')+'" placeholder="-" style="min-width:90px" onchange="mIE('+ri+','obs',this.value)"></td>'+
+      '<td><input type="text" value="'+(r.obs||'')+'" placeholder="-" style="min-width:90px" onchange="mIE('+ri+',\"obs\",this.value)"></td>'+
       '<td style="white-space:nowrap">'+
         '<button class="btn" style="padding:2px 8px;font-size:11px" onclick="mEditModal('+ri+')">Edit</button> '+
         '<button class="btn btn-danger" style="padding:2px 8px;font-size:11px" onclick="mDel('+ri+')">Del</button>'+
