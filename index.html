@@ -1624,6 +1624,7 @@ function showPage(id) {
   document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
   if(id==='fabventa') setTimeout(renderFabVentas, 50);
   if(id==='azq') setTimeout(layoutPostRender, 50);
+  if(id==='maestro') setTimeout(mFilter, 50);
   // Al abrir Configuración, mostrar los valores actuales de capacidades
   if(id==='upload') {
     ['gw','bloq','bty','ag','emb','gla'].forEach(k => {
@@ -4170,18 +4171,10 @@ function mExport(){
   XLSX.writeFile(wb,'Maestro_Ubicaciones_AZQ_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 document.getElementById('m-modal-bg')?.addEventListener('click',e=>{if(e.target===e.currentTarget)mCloseModal();});
-// Cargar datos en memoria al iniciar; renderizar solo cuando la página esté activa
+// Cargar datos en memoria al iniciar
 (function(){
-  // Cargar datos en memoria inmediatamente
   try{ const s=localStorage.getItem(M_DK); mData=s?JSON.parse(s):JSON.parse(JSON.stringify(M_INIT)); }
   catch(e){ mData=JSON.parse(JSON.stringify(M_INIT)); }
-
-  // Parchear showPage para renderizar cuando se abre Maestro
-  const _origShow = window.showPage;
-  window.showPage = function(id){
-    _origShow(id);
-    if(id==='maestro') { mFilter(); }
-  };
 })();
 </script>
 
