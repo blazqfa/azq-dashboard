@@ -1557,24 +1557,22 @@ function renderAZQPage() {
       .reduce((s,r) => s + (window.sapUbis[r.ubi]||0), 0);
   }
 
-  // Umbral real GW basado en % ocupación por ubicaciones (monomarca por ubi).
-  // Una ubicación está "llena" en cuanto tiene ≥1 pallet, independientemente de su capTotal.
-  // Umbral = capacidad media por ubi × número total de ubis GW.
-  // Cuando el stock supera ese umbral, todas las ubis están ocupadas → exceso a GLA.
+  // Umbral real GW basado en % ocupación por ubicaciones (lógica monomarca).
+  // Una ubi está ocupada con ≥1 pallet de cualquier referencia.
+  // El umbral de saturación = stock al que el 90% de las ubis GW estarían ocupadas.
+  // Por encima de ese umbral → exceso va a GLA externo.
   // Si no hay datos SAP → devuelve null (usar capGWFija).
-  function umbralGWporUbis() {
+  function umbralGWporUbis(pctSat) {
     if(!mData || mData.length===0 || !window.sapUbis) return null;
     const gwUbis = mData.filter(r => r.zona==='GLASSWARE');
     if(gwUbis.length === 0) return null;
-    const numUbis   = gwUbis.length;
-    const capTotal  = gwUbis.reduce((s,r) => s + (r.capTotal||0), 0);
-    // Pallets medios por ubicación cuando están todas llenas = capTotal / numUbis
-    // Pero como es monomarca, el stock real que hace que todas estén ocupadas
-    // equivale a: numUbis × (stock actual SAP / ubis ocupadas actualmente)
-    const ubisOcup  = gwUbis.filter(r => (window.sapUbis[r.ubi]||0) > 0).length;
-    if(ubisOcup === 0) return capTotal; // sin stock → umbral = cap total
-    const plMedioOcup = stockGWdeSAP() / ubisOcup; // pl medios por ubi ocupada
-    return Math.round(numUbis * plMedioOcup); // stock al que se llenarían TODAS las ubis
+    const numUbis    = gwUbis.length;
+    const ubisOcup   = gwUbis.filter(r => (window.sapUbis[r.ubi]||0) > 0).length;
+    if(ubisOcup === 0) return null;
+    const stockGW    = stockGWdeSAP() || 0;
+    const plMedioUbi = stockGW / ubisOcup; // pl medios por ubicación ocupada (monomarca)
+    const sat        = (pctSat !== undefined ? pctSat : 0.90); // 90% por defecto
+    return Math.round(numUbis * sat * plMedioUbi);
   }
 
   document.getElementById('tab-azq-resumen').innerHTML = `
@@ -2303,7 +2301,7 @@ function fvSimGLA() {
   // Si no hay datos SAP, se usa la capacidad fija configurada.
   const capMaestroGW  = (typeof capTotalUbis    === 'function') ? capTotalUbis('gw')    : null;
   const capGW         = capMaestroGW !== null ? capMaestroGW : capGWFija;
-  const umbralPorUbis = (typeof umbralGWporUbis === 'function') ? umbralGWporUbis()     : null;
+  const umbralPorUbis = (typeof umbralGWporUbis === 'function') ? umbralGWporUbis(0.90) : null;
   const umbralGLA     = umbralPorUbis !== null ? umbralPorUbis : capGW;
 
   // ── Ancla al mes actual ──
