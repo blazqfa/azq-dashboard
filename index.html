@@ -352,6 +352,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
         Maestro de Ubi.
       </div>
+      <div class="nav-item" onclick="showPage('analisis')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Análisis
+      </div>
       <div class="nav-section" style="margin-top:12px">Configuración</div>
       <div class="nav-item" onclick="showPage('upload')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -935,6 +939,52 @@
         </div>
       </div>
     </div>
+    <!-- ANÁLISIS DE UBICACIONES -->
+    <div class="page" id="page-analisis">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div class="section-title">Análisis de Ubicaciones</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:3px">Cruce SAP ↔ Maestro · Oportunidades de consolidación</div>
+        </div>
+        <button class="btn btn-primary" onclick="renderAnalisis()">🔄 Actualizar análisis</button>
+      </div>
+
+      <!-- TABS -->
+      <div class="tabs" style="margin-bottom:16px">
+        <div class="tab active" onclick="switchTab(this,'tab-an-consolidar')">🔀 Consolidación</div>
+        <div class="tab" onclick="switchTab(this,'tab-an-cruce')">⚡ Cruce SAP ↔ Maestro</div>
+      </div>
+
+      <!-- TAB 1: Consolidación -->
+      <div id="tab-an-consolidar">
+        <div style="padding:12px 16px;background:#EBF0F9;border:1.5px solid var(--accent);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--accent)">
+          <strong>¿Cómo funciona?</strong> Muestra ubicaciones con el mismo artículo en distintas ubicaciones que podrían agruparse para liberar huecos. Solo para <strong>Glassware, Prov-Bloq, Embalaje y AQ (After Glass/RF)</strong>. Requiere que el Excel SAP esté cargado.
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+          <select id="an-zona-filter" onchange="renderAnalisisConsolidar()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px">
+            <option value="">Todas las zonas elegibles</option>
+            <option value="GLASSWARE">Glassware</option>
+            <option value="PROV-BLOQ (GW)">Prov-Bloq (GW)</option>
+            <option value="EMBALAJE">Embalaje</option>
+            <option value="AFTER GLASS / RF">After Glass / RF</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+            <input type="checkbox" id="an-solo-multi" checked onchange="renderAnalisisConsolidar()">
+            Solo artículos en 2+ ubicaciones
+          </label>
+          <span id="an-con-summary" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <div id="an-consolidar-content"></div>
+      </div>
+
+      <!-- TAB 2: Cruce SAP ↔ Maestro -->
+      <div id="tab-an-cruce" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="an-cruce-content">
+          <div style="text-align:center;padding:40px;color:var(--text3)">Carga el Excel SAP para ver el análisis</div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -967,7 +1017,7 @@ const I18N = {
     // AZQ table headers
     th_zona: 'Zona', th_color: 'Color', th_stock: 'Stock (pl)',
     th_cap: 'Capacidad (pl)', th_ocup: '% Ocupación',
-    th_libres: 'Pallets libres/exceso', th_estado: 'Estado',
+    th_libres: 'Saturación', th_estado: 'Estado',
     total_azq: 'Total AZQ',
     // GLA page
     gla_total: 'Total pallets GLA', gla_refs: 'Referencias en GLA',
@@ -1341,7 +1391,7 @@ function openZoneDetail(zoneId) {
         <div class="summary-box"><div class="sv">${fmt(totalStock)}</div><div class="sl">Stock total (pl)</div></div>
         <div class="summary-box"><div class="sv">${fmt(totalCap)}</div><div class="sl">Capacidad total (pl)</div></div>
         <div class="summary-box"><div class="sv" style="color:var(--${pctClass(pct(totalStock,totalCap))})">${(pct(totalStock,totalCap)*100).toFixed(1)}%</div><div class="sl">Ocupación global</div></div>
-        <div class="summary-box"><div class="sv">${fmt(Math.max(0,totalCap-totalStock))}</div><div class="sl">Pallets libres</div></div>
+        <div class="summary-box"><div class="sv">${fmt(Math.max(0,totalCap-totalStock))}</div><div class="sl">Saturación</div></div>
       </div>
       <table class="data-table">
         <thead><tr><th>Zona</th><th>Stock (pl)</th><th>Capacidad (pl)</th><th>% Ocupación</th><th>Estado</th></tr></thead>
@@ -1406,7 +1456,7 @@ function openZoneDetail(zoneId) {
       <div class="summary-box"><div class="sv" style="color:${pctColor(p)}">${(p*100).toFixed(1)}%</div><div class="sl">Ocupación</div></div>
       <div class="summary-box"><div class="sv">${fmt(z.stock)}</div><div class="sl">Stock actual (pl)</div></div>
       <div class="summary-box"><div class="sv">${fmt(cap(z.id))}</div><div class="sl">Capacidad (pl)</div></div>
-      <div class="summary-box"><div class="sv" style="color:${libre<0?'var(--danger)':'var(--ok)'}">${libre<0?'+'+fmt(-libre):fmt(libre)}</div><div class="sl">${libre<0?'Exceso (pl)':'Pallets libres'}</div></div>
+      <div class="summary-box"><div class="sv" style="color:${libre<0?'var(--danger)':'var(--ok)'}">${libre<0?'+'+fmt(-libre):fmt(libre)}</div><div class="sl">${libre<0?'Exceso (pl)':'Saturación'}</div></div>
     </div>
     ${extraHtml}`;
 }
@@ -1468,19 +1518,44 @@ function renderAZQPage() {
   // Tab 1: resumen zonas
   const totalStock = state.zones.reduce((s,z)=>s+z.stock,0);
   const totalCap = state.zones.reduce((s,z)=>s+cap(z.id),0);
+
+  // % Ocupación por ubicaciones: ocup = ubis con stock / total ubis del maestro
+  // Cruce con sapUbis (cargado al subir SAP)
+  const zoneKeyMap = {gw:'GLASSWARE', bloq:'PROV-BLOQ (GW)', bty:'BTY', ag:'AFTER GLASS / RF', emb:'EMBALAJE'};
+  function ocupUbis(zoneId) {
+    if(!mData || mData.length===0 || !window.sapUbis) return null;
+    const zKey = zoneKeyMap[zoneId];
+    if(!zKey) return null;
+    const maestroUbis = mData.filter(r=>r.zona===zKey);
+    if(maestroUbis.length===0) return null;
+    const total = maestroUbis.length;
+    const conStock = maestroUbis.filter(r=>window.sapUbis[r.ubi] && window.sapUbis[r.ubi]>0).length;
+    return {total, conStock, pct: conStock/total};
+  }
+  function ocupUbisTotal() {
+    if(!mData || mData.length===0 || !window.sapUbis) return null;
+    const total = mData.length;
+    const conStock = mData.filter(r=>window.sapUbis[r.ubi] && window.sapUbis[r.ubi]>0).length;
+    return {total, conStock, pct: conStock/total};
+  }
+
   document.getElementById('tab-azq-resumen').innerHTML = `
     <table class="data-table">
       <thead><tr>
-      <th>${t('th_zona')}</th><th>${t('th_color')}</th><th>${t('th_stock')}</th><th>${t('th_cap')}</th><th>${t('th_ocup')}</th><th>${t('th_libres')}</th><th>${t('th_estado')}</th>
+      <th>${t('th_zona')}</th><th>${t('th_color')}</th><th>${t('th_stock')}</th><th>${t('th_cap')}</th>
+      <th title="% de ubicaciones ocupadas (con stock ≥ 1 pl) sobre el total de ubicaciones del Maestro">${t('th_ocup')} <span style="font-size:9px;opacity:.6">por ubis</span></th>
+      <th>Saturación</th><th>${t('th_estado')}</th>
       </tr></thead>
       <tbody>
         ${state.zones.map(z=>{
           const p=pct(z.stock,cap(z.id)); const libre=cap(z.id)-z.stock;
+          const ou = ocupUbis(z.id);
+          const ocupDisplay = ou ? `<span title="${ou.conStock} de ${ou.total} ubicaciones ocupadas">${(ou.pct*100).toFixed(1)}% <small style="font-size:9px;color:var(--text3)">(${ou.conStock}/${ou.total} ubis)</small></span>` : `<span style="color:var(--text3)" title="Carga el Excel SAP para ver % real por ubicaciones">${(p*100).toFixed(1)}%<small style="font-size:9px;color:var(--text3)"> (pl)</small></span>`;
           return`<tr>
             <td>${z.name}</td>
             <td><span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:${z.color}"></span></td>
             <td>${fmt(z.stock)}</td><td>${fmt(cap(z.id))}</td>
-            <td class="pct-${pctClass(p)}">${(p*100).toFixed(1)}%</td>
+            <td class="pct-${ou?pctClass({valueOf:()=>ou.pct}):pctClass(p)}">${ocupDisplay}</td>
             <td style="color:${libre<0?'var(--danger)':'var(--ok)'}">${libre<0?'▲'+fmt(-libre):fmt(libre)}</td>
             <td>${badge(p)}</td>
           </tr>`;
@@ -1488,7 +1563,7 @@ function renderAZQPage() {
         <tr class="total-row">
           <td>Total AZQ</td><td></td>
           <td>${fmt(totalStock)}</td><td>${fmt(totalCap)}</td>
-          <td class="pct-${pctClass(pct(totalStock,totalCap))}">${(pct(totalStock,totalCap)*100).toFixed(1)}%</td>
+          <td>${(()=>{const ou=ocupUbisTotal();return ou?`${(ou.pct*100).toFixed(1)}% (${ou.conStock}/${ou.total} ubis)`:`${(pct(totalStock,totalCap)*100).toFixed(1)}%`;})()}</td>
           <td style="color:var(--${pctClass(pct(totalStock,totalCap))})">${fmt(Math.max(0,totalCap-totalStock))}</td>
           <td></td>
         </tr>
@@ -1625,13 +1700,14 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const map = {overview:'Resumen general',azq:'Almacén AZQ',gla:'Almacén externo GLA',fabventa:'Fabricación vs Ventas',maestro:'Maestro de Ubicaciones',upload:'Configuración'};
+  const map = {overview:'Resumen general',azq:'Almacén AZQ',gla:'Almacén externo GLA',fabventa:'Fabricación vs Ventas',maestro:'Maestro de Ubicaciones',analisis:'Análisis',upload:'Configuración'};
   document.getElementById('topbar-title').textContent = map[id]||id;
   const idx = ['overview','azq','gla','fabventa','maestro','upload'].indexOf(id);
   document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
   if(id==='fabventa') setTimeout(renderFabVentas, 50);
   if(id==='azq') setTimeout(layoutPostRender, 50);
   if(id==='maestro') setTimeout(()=>{mRenderZoneCards();mFilter();mSyncFromServer();}, 50);
+  if(id==='analisis') setTimeout(()=>renderAnalisis(), 50);
   // Al abrir Configuración, mostrar los valores actuales de capacidades
   if(id==='upload') {
     ['gw','bloq','bty','ag','emb','gla'].forEach(k => {
@@ -1745,6 +1821,44 @@ function parseWorkbook(wb, filename) {
     }
   }
 
+  // Parse Sheet SAP — extract ubicacion-level stock for analysis
+  const sapSheetName = sheets.find(s=>s==='Sheet SAP')||sheets.find(s=>s.toLowerCase().includes('sap'));
+  if(sapSheetName) {
+    const ws = wb.Sheets[sapSheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    // Header row 0: col B=1(Ubicacion), C=2(Recursos/articulo), T=19(Producto), U=20(Descripcion), BB=53(Cant pallets)
+    // Find column indices from header
+    const hdr = rows[0]||[];
+    const colUbi = hdr.findIndex(h=>typeof h==='string'&&h.toLowerCase().includes('ubicaci'));
+    const colRec = hdr.findIndex(h=>typeof h==='string'&&(h.toLowerCase().includes('recurso')||h.toLowerCase().includes('material')));
+    const colProd = hdr.findIndex(h=>typeof h==='string'&&h.toLowerCase().includes('producto'));
+    const colDesc = hdr.findIndex(h=>typeof h==='string'&&h.toLowerCase().includes('descrip'));
+    // BB column = index 53 (0-based), or find by name
+    let colPl = hdr.findIndex(h=>typeof h==='string'&&(h.toLowerCase().includes('pallet')||h.toLowerCase().includes('palet')));
+    if(colPl<0) colPl = 53; // fallback col BB
+
+    const iUbi = colUbi>=0?colUbi:1;
+    const iRec = colRec>=0?colRec:2;
+    const iProd = colProd>=0?colProd:19;
+    const iDesc = colDesc>=0?colDesc:20;
+    const iPl = colPl>=0?colPl:53;
+
+    window.sapUbis = {}; // ubi -> total pallets
+    window.sapRows = []; // {ubi, articulo, producto, desc, pl}
+    rows.slice(1).forEach(row=>{
+      const ubi = (row[iUbi]||'').toString().trim().toUpperCase();
+      const art = (row[iRec]||'').toString().trim();
+      const prod = (row[iProd]||'').toString().trim();
+      const desc = (row[iDesc]||'').toString().trim();
+      const pl = parseFloat(row[iPl])||0;
+      if(!ubi || pl<=0) return;
+      window.sapUbis[ubi] = (window.sapUbis[ubi]||0) + pl;
+      window.sapRows.push({ubi, articulo:art, producto:prod, desc, pl});
+    });
+    parsed.sap = true;
+    document.getElementById('field-sap')?.classList.add('filled');
+  }
+
   state.lastUpdate = new Date();
   state.lastUpdate._filename = filename;
   updateLastUpdate();
@@ -1846,7 +1960,7 @@ function exportToExcel() {
     ['DASHBOARD KPIs — ALMACÉN AZQ'],
     [`Exportado: ${new Date().toLocaleString('es-ES')}`],
     [],
-    ['ZONA','STOCK ACTUAL (pl)','CAPACIDAD (pl)','% OCUPACIÓN','PALLETS LIBRES','ESTADO'],
+    ['ZONA','STOCK ACTUAL (pl)','CAPACIDAD (pl)','% OCUPACIÓN','SATURACIÓN','ESTADO'],
     ...state.zones.map(z=>{
       const p=pct(z.stock,cap(z.id));
       return[z.name, z.stock, cap(z.id), (p*100).toFixed(1)+'%', cap(z.id)-z.stock, p>1?'SATURADO':p>=.85?'ATENCIÓN':'CORRECTO'];
@@ -3569,6 +3683,138 @@ function guardarHistorico() {
   } catch(e) { console.warn('No se pudo guardar histórico:', e); }
 }
 
+// ===== ANÁLISIS DE UBICACIONES =====
+
+// Zonas elegibles para consolidación
+const AN_ZONAS = ['GLASSWARE','PROV-BLOQ (GW)','EMBALAJE','AFTER GLASS / RF'];
+
+function renderAnalisis() {
+  renderAnalisisConsolidar();
+  renderAnalisisCruce();
+}
+
+function renderAnalisisConsolidar() {
+  const el = document.getElementById('an-consolidar-content');
+  const sumEl = document.getElementById('an-con-summary');
+  if(!el) return;
+
+  if(!window.sapRows || window.sapRows.length===0) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">⚠️ Carga el Excel SAP para ver las oportunidades de consolidación</div>';
+    return;
+  }
+
+  const filtroZona = document.getElementById('an-zona-filter')?.value||'';
+  const soloMulti = document.getElementById('an-solo-multi')?.checked!==false;
+
+  // Map ubi → zona from maestro
+  const ubiZona = {};
+  mData.forEach(r=>{ ubiZona[r.ubi.toUpperCase()] = r.zona; });
+
+  // Filter SAP rows to eligible zones
+  const rows = window.sapRows.filter(r=>{
+    const zona = ubiZona[r.ubi]||'';
+    if(!AN_ZONAS.includes(zona)) return false;
+    if(filtroZona && zona!==filtroZona) return false;
+    return true;
+  });
+
+  // Group by articulo
+  const byArt = {};
+  rows.forEach(r=>{
+    const key = r.articulo||r.producto||'SIN_COD';
+    if(!byArt[key]) byArt[key] = {articulo:r.articulo, producto:r.producto, desc:r.desc, ubis:[]};
+    const existing = byArt[key].ubis.find(u=>u.ubi===r.ubi);
+    if(existing) existing.pl += r.pl;
+    else byArt[key].ubis.push({ubi:r.ubi, pl:r.pl, zona:ubiZona[r.ubi]||'?'});
+  });
+
+  let grupos = Object.values(byArt).sort((a,b)=>b.ubis.length-a.ubis.length);
+  if(soloMulti) grupos = grupos.filter(g=>g.ubis.length>=2);
+
+  if(sumEl) sumEl.textContent = grupos.length+' artículos · '+ grupos.reduce((s,g)=>s+g.ubis.length,0)+' ubicaciones';
+
+  if(grupos.length===0) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3)">No hay artículos con stock en múltiples ubicaciones para las zonas seleccionadas.</div>';
+    return;
+  }
+
+  el.innerHTML = `<div style="overflow:auto"><table class="data-table">
+    <thead><tr>
+      <th>Artículo</th><th>Descripción</th><th>Nº ubis</th><th>Total pl</th><th>Ubicaciones con stock</th><th>Zonas</th>
+    </tr></thead>
+    <tbody>
+    ${grupos.map(g=>{
+      const totalPl = g.ubis.reduce((s,u)=>s+u.pl,0);
+      const zonas = [...new Set(g.ubis.map(u=>u.zona))].join(', ');
+      const ubisStr = g.ubis.sort((a,b)=>b.pl-a.pl).map(u=>`<span style="display:inline-block;margin:1px 3px;padding:1px 6px;background:var(--accent-light);border-radius:4px;font-size:11px;font-family:monospace">${u.ubi} <strong>${u.pl.toFixed(1)}</strong>pl</span>`).join('');
+      const highlight = g.ubis.length>=3 ? 'background:#FEF9C3' : '';
+      return `<tr style="${highlight}">
+        <td style="font-family:monospace;font-weight:700;font-size:12px">${g.articulo||'—'}</td>
+        <td style="font-size:11px;max-width:200px">${g.desc||g.producto||'—'}</td>
+        <td style="text-align:center;font-weight:700;color:${g.ubis.length>=3?'var(--danger)':'var(--warn)'}">${g.ubis.length}</td>
+        <td style="text-align:right;font-weight:700">${totalPl.toFixed(1)}</td>
+        <td>${ubisStr}</td>
+        <td style="font-size:11px;color:var(--text3)">${zonas}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function renderAnalisisCruce() {
+  const el = document.getElementById('an-cruce-content');
+  if(!el) return;
+
+  if(!window.sapRows || window.sapRows.length===0) {
+    el.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">⚠️ Carga el Excel SAP para ver el cruce</div>';
+    return;
+  }
+
+  // SAP ubicaciones con stock
+  const sapUbisSet = new Set(Object.keys(window.sapUbis||{}).map(u=>u.toUpperCase()));
+  // Maestro ubicaciones
+  const maestroSet = new Set(mData.map(r=>r.ubi.toUpperCase()));
+
+  // En SAP pero NO en Maestro
+  const enSapNoMaestro = [...sapUbisSet].filter(u=>!maestroSet.has(u)).sort();
+  // En Maestro pero sin stock en SAP (pueden ser vacías — no es error, es info)
+  const enMaestroNoSap = [...maestroSet].filter(u=>!sapUbisSet.has(u)).sort();
+
+  el.innerHTML = `
+    <div style="background:var(--surface);border:1.5px solid var(--danger);border-radius:10px;padding:16px">
+      <div style="font-weight:700;font-size:13px;color:var(--danger);margin-bottom:4px">⚠️ En SAP pero NO en el Maestro (${enSapNoMaestro.length})</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Ubicaciones con stock en SAP que no están dadas de alta en el Maestro. <strong>Revísalas y añádelas al Maestro.</strong></div>
+      ${enSapNoMaestro.length===0
+        ? '<div style="color:var(--ok);font-weight:700;padding:10px 0">✅ Todas las ubicaciones SAP están en el Maestro</div>'
+        : `<div style="max-height:300px;overflow-y:auto">
+            <table class="data-table"><thead><tr><th>Ubicación</th><th>Pallets (SAP)</th><th>Artículos</th></tr></thead><tbody>
+            ${enSapNoMaestro.map(u=>{
+              const arts = (window.sapRows||[]).filter(r=>r.ubi.toUpperCase()===u);
+              const totalPl = (window.sapUbis||{})[u]||0;
+              const artsList = [...new Set(arts.map(r=>r.articulo||r.producto))].slice(0,3).join(', ');
+              return `<tr><td style="font-family:monospace;font-weight:700;color:var(--danger)">${u}</td><td style="text-align:right">${totalPl.toFixed(1)}</td><td style="font-size:11px">${artsList}</td></tr>`;
+            }).join('')}
+            </tbody></table>
+          </div>`
+      }
+    </div>
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-weight:700;font-size:13px;color:var(--text2);margin-bottom:4px">📋 En Maestro pero SIN stock en SAP (${enMaestroNoSap.length})</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Ubicaciones del Maestro que actualmente están vacías según SAP. Pueden estar libres o no gestionadas en SAP.</div>
+      ${enMaestroNoSap.length===0
+        ? '<div style="color:var(--ok);font-weight:700;padding:10px 0">✅ Todas las ubicaciones del Maestro tienen stock en SAP</div>'
+        : `<div style="max-height:300px;overflow-y:auto">
+            <table class="data-table"><thead><tr><th>Ubicación</th><th>Zona (Maestro)</th><th>Capacidad (pl)</th></tr></thead><tbody>
+            ${enMaestroNoSap.map(u=>{
+              const r = mData.find(r=>r.ubi.toUpperCase()===u)||{};
+              return `<tr><td style="font-family:monospace">${u}</td><td style="font-size:11px">${r.zona||'—'}</td><td style="text-align:right">${r.capTotal||'—'}</td></tr>`;
+            }).join('')}
+            </tbody></table>
+          </div>`
+      }
+    </div>`;
+}
+
 // ===== SIDEBAR COLLAPSE =====
 function toggleSidebar() {
   const shell = document.getElementById('shell');
@@ -3727,6 +3973,138 @@ fetchAndInit().then(() => {
 // ===== HISTÓRICO AZQ =====
 // Guarda automáticamente cada vez que se cargan datos nuevos
 
+
+// ===== ANÁLISIS DE UBICACIONES =====
+
+// Zonas elegibles para consolidación
+const AN_ZONAS = ['GLASSWARE','PROV-BLOQ (GW)','EMBALAJE','AFTER GLASS / RF'];
+
+function renderAnalisis() {
+  renderAnalisisConsolidar();
+  renderAnalisisCruce();
+}
+
+function renderAnalisisConsolidar() {
+  const el = document.getElementById('an-consolidar-content');
+  const sumEl = document.getElementById('an-con-summary');
+  if(!el) return;
+
+  if(!window.sapRows || window.sapRows.length===0) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">⚠️ Carga el Excel SAP para ver las oportunidades de consolidación</div>';
+    return;
+  }
+
+  const filtroZona = document.getElementById('an-zona-filter')?.value||'';
+  const soloMulti = document.getElementById('an-solo-multi')?.checked!==false;
+
+  // Map ubi → zona from maestro
+  const ubiZona = {};
+  mData.forEach(r=>{ ubiZona[r.ubi.toUpperCase()] = r.zona; });
+
+  // Filter SAP rows to eligible zones
+  const rows = window.sapRows.filter(r=>{
+    const zona = ubiZona[r.ubi]||'';
+    if(!AN_ZONAS.includes(zona)) return false;
+    if(filtroZona && zona!==filtroZona) return false;
+    return true;
+  });
+
+  // Group by articulo
+  const byArt = {};
+  rows.forEach(r=>{
+    const key = r.articulo||r.producto||'SIN_COD';
+    if(!byArt[key]) byArt[key] = {articulo:r.articulo, producto:r.producto, desc:r.desc, ubis:[]};
+    const existing = byArt[key].ubis.find(u=>u.ubi===r.ubi);
+    if(existing) existing.pl += r.pl;
+    else byArt[key].ubis.push({ubi:r.ubi, pl:r.pl, zona:ubiZona[r.ubi]||'?'});
+  });
+
+  let grupos = Object.values(byArt).sort((a,b)=>b.ubis.length-a.ubis.length);
+  if(soloMulti) grupos = grupos.filter(g=>g.ubis.length>=2);
+
+  if(sumEl) sumEl.textContent = grupos.length+' artículos · '+ grupos.reduce((s,g)=>s+g.ubis.length,0)+' ubicaciones';
+
+  if(grupos.length===0) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3)">No hay artículos con stock en múltiples ubicaciones para las zonas seleccionadas.</div>';
+    return;
+  }
+
+  el.innerHTML = `<div style="overflow:auto"><table class="data-table">
+    <thead><tr>
+      <th>Artículo</th><th>Descripción</th><th>Nº ubis</th><th>Total pl</th><th>Ubicaciones con stock</th><th>Zonas</th>
+    </tr></thead>
+    <tbody>
+    ${grupos.map(g=>{
+      const totalPl = g.ubis.reduce((s,u)=>s+u.pl,0);
+      const zonas = [...new Set(g.ubis.map(u=>u.zona))].join(', ');
+      const ubisStr = g.ubis.sort((a,b)=>b.pl-a.pl).map(u=>`<span style="display:inline-block;margin:1px 3px;padding:1px 6px;background:var(--accent-light);border-radius:4px;font-size:11px;font-family:monospace">${u.ubi} <strong>${u.pl.toFixed(1)}</strong>pl</span>`).join('');
+      const highlight = g.ubis.length>=3 ? 'background:#FEF9C3' : '';
+      return `<tr style="${highlight}">
+        <td style="font-family:monospace;font-weight:700;font-size:12px">${g.articulo||'—'}</td>
+        <td style="font-size:11px;max-width:200px">${g.desc||g.producto||'—'}</td>
+        <td style="text-align:center;font-weight:700;color:${g.ubis.length>=3?'var(--danger)':'var(--warn)'}">${g.ubis.length}</td>
+        <td style="text-align:right;font-weight:700">${totalPl.toFixed(1)}</td>
+        <td>${ubisStr}</td>
+        <td style="font-size:11px;color:var(--text3)">${zonas}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function renderAnalisisCruce() {
+  const el = document.getElementById('an-cruce-content');
+  if(!el) return;
+
+  if(!window.sapRows || window.sapRows.length===0) {
+    el.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">⚠️ Carga el Excel SAP para ver el cruce</div>';
+    return;
+  }
+
+  // SAP ubicaciones con stock
+  const sapUbisSet = new Set(Object.keys(window.sapUbis||{}).map(u=>u.toUpperCase()));
+  // Maestro ubicaciones
+  const maestroSet = new Set(mData.map(r=>r.ubi.toUpperCase()));
+
+  // En SAP pero NO en Maestro
+  const enSapNoMaestro = [...sapUbisSet].filter(u=>!maestroSet.has(u)).sort();
+  // En Maestro pero sin stock en SAP (pueden ser vacías — no es error, es info)
+  const enMaestroNoSap = [...maestroSet].filter(u=>!sapUbisSet.has(u)).sort();
+
+  el.innerHTML = `
+    <div style="background:var(--surface);border:1.5px solid var(--danger);border-radius:10px;padding:16px">
+      <div style="font-weight:700;font-size:13px;color:var(--danger);margin-bottom:4px">⚠️ En SAP pero NO en el Maestro (${enSapNoMaestro.length})</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Ubicaciones con stock en SAP que no están dadas de alta en el Maestro. <strong>Revísalas y añádelas al Maestro.</strong></div>
+      ${enSapNoMaestro.length===0
+        ? '<div style="color:var(--ok);font-weight:700;padding:10px 0">✅ Todas las ubicaciones SAP están en el Maestro</div>'
+        : `<div style="max-height:300px;overflow-y:auto">
+            <table class="data-table"><thead><tr><th>Ubicación</th><th>Pallets (SAP)</th><th>Artículos</th></tr></thead><tbody>
+            ${enSapNoMaestro.map(u=>{
+              const arts = (window.sapRows||[]).filter(r=>r.ubi.toUpperCase()===u);
+              const totalPl = (window.sapUbis||{})[u]||0;
+              const artsList = [...new Set(arts.map(r=>r.articulo||r.producto))].slice(0,3).join(', ');
+              return `<tr><td style="font-family:monospace;font-weight:700;color:var(--danger)">${u}</td><td style="text-align:right">${totalPl.toFixed(1)}</td><td style="font-size:11px">${artsList}</td></tr>`;
+            }).join('')}
+            </tbody></table>
+          </div>`
+      }
+    </div>
+    <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-weight:700;font-size:13px;color:var(--text2);margin-bottom:4px">📋 En Maestro pero SIN stock en SAP (${enMaestroNoSap.length})</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Ubicaciones del Maestro que actualmente están vacías según SAP. Pueden estar libres o no gestionadas en SAP.</div>
+      ${enMaestroNoSap.length===0
+        ? '<div style="color:var(--ok);font-weight:700;padding:10px 0">✅ Todas las ubicaciones del Maestro tienen stock en SAP</div>'
+        : `<div style="max-height:300px;overflow-y:auto">
+            <table class="data-table"><thead><tr><th>Ubicación</th><th>Zona (Maestro)</th><th>Capacidad (pl)</th></tr></thead><tbody>
+            ${enMaestroNoSap.map(u=>{
+              const r = mData.find(r=>r.ubi.toUpperCase()===u)||{};
+              return `<tr><td style="font-family:monospace">${u}</td><td style="font-size:11px">${r.zona||'—'}</td><td style="text-align:right">${r.capTotal||'—'}</td></tr>`;
+            }).join('')}
+            </tbody></table>
+          </div>`
+      }
+    </div>`;
+}
 
 // ===== SIDEBAR COLLAPSE =====
 function toggleSidebar() {
