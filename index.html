@@ -3934,6 +3934,30 @@ async function fetchAndInit() {
       }
     }
 
+    // Cargar stock por ubicación desde GAS (para % Ocupación real y página Análisis)
+    if(d.ubisStock && d.ubisStock.length > 0) {
+      window.sapUbis = {};
+      window.sapRows = [];
+      d.ubisStock.forEach(r => {
+        const ubi = (r.ubi || '').toUpperCase();
+        if(!ubi || !r.pallets) return;
+        window.sapUbis[ubi] = (window.sapUbis[ubi] || 0) + r.pallets;
+        window.sapRows.push({
+          ubi,
+          zona:        r.zona        || '',
+          articulo:    r.producto    || '',   // col T = código producto
+          producto:    r.producto    || '',
+          desc:        r.descripcion || '',
+          tipo_stocks: r.tipo_stocks || '',
+          tipo_codice: r.tipo_codice || '',
+          ctd_umb:     r.ctd_umb    || 0,
+          pl:          r.pallets,
+          pz_pl:       r.pz_pl      || 0,
+          grp_emb:     r.grp_emb    || ''
+        });
+      });
+    }
+
     progress(95, 'Renderizando dashboard...');
     renderAll();
     guardarHistorico(); // guardar snapshot en histórico
@@ -4222,6 +4246,30 @@ async function fetchAndInit() {
         state.lastUpdate = new Date();
         state.lastUpdate._filename = 'Google Sheets · ' + d.config.ultima_actualizacion;
       }
+    }
+
+    // Cargar stock por ubicación desde GAS (para % Ocupación real y página Análisis)
+    if(d.ubisStock && d.ubisStock.length > 0) {
+      window.sapUbis = {};
+      window.sapRows = [];
+      d.ubisStock.forEach(r => {
+        const ubi = (r.ubi || '').toUpperCase();
+        if(!ubi || !r.pallets) return;
+        window.sapUbis[ubi] = (window.sapUbis[ubi] || 0) + r.pallets;
+        window.sapRows.push({
+          ubi,
+          zona:        r.zona        || '',
+          articulo:    r.producto    || '',   // col T = código producto
+          producto:    r.producto    || '',
+          desc:        r.descripcion || '',
+          tipo_stocks: r.tipo_stocks || '',
+          tipo_codice: r.tipo_codice || '',
+          ctd_umb:     r.ctd_umb    || 0,
+          pl:          r.pallets,
+          pz_pl:       r.pz_pl      || 0,
+          grp_emb:     r.grp_emb    || ''
+        });
+      });
     }
 
     progress(95, 'Renderizando dashboard...');
