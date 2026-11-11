@@ -925,13 +925,11 @@
               <input type="number" id="cap-gla" value="1500" style="width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:6px;font-size:13px"></div>
             <div style="grid-column:1/-1;border-top:1px solid var(--border2);padding-top:10px;margin-top:2px">
               <label style="color:var(--text3);display:block;margin-bottom:4px;font-weight:700">
-                🔶 Colchón de saturación GW (pl)
-                <span style="font-weight:400;color:var(--text3);font-size:11px"> — cuando AZQ supera (Cap. Total GW − colchón), el exceso va a GLA externo</span>
+                🔶 Umbral saturación GW
+                <span style="font-weight:400;color:var(--text3);font-size:11px"> — el exceso va a GLA cuando se supera el 90% de ubicaciones ocupadas (con datos SAP) o el 90% de la Cap. GW configurada</span>
               </label>
               <div style="display:flex;align-items:center;gap:10px">
-                <input type="number" id="gla-saturacion" value="2000" step="100" min="0"
-                  style="width:120px;padding:7px 10px;border:2px solid var(--warn);border-radius:6px;font-size:14px;font-weight:700;color:var(--warn)">
-                <span id="cap-saturacion-display" style="font-size:12px;color:var(--text2)">Umbral real = calculando…</span>
+                <span id="cap-saturacion-display" style="font-size:13px;color:var(--text2);font-weight:600">Umbral = calculando…</span>
               </div>
             </div>
           </div>
@@ -1926,8 +1924,6 @@ function updateCapacities() {
   state.caps.ag   = parseInt(document.getElementById('cap-ag').value)||3342;
   state.caps.emb  = parseInt(document.getElementById('cap-emb').value)||4030;
   state.caps.gla  = parseInt(document.getElementById('cap-gla').value)||1500;
-  // Guardar colchón saturación GLA
-  state.caps.glaSaturacion = parseInt(document.getElementById('gla-saturacion').value)||2000;
   // Guardar en localStorage para que persistan entre recargas
   try { localStorage.setItem('azq_caps', JSON.stringify(state.caps)); } catch(e){}
   // Actualizar display umbral real
@@ -1945,11 +1941,20 @@ function updateCapacities() {
 }
 
 function fvActualizarUmbralDisplay() {
-  const sat    = parseInt(document.getElementById('gla-saturacion')?.value)||2000;
-  const capGW  = (typeof cap === 'function') ? cap('gw') : 7573;
-  const umbral = capGW + sat;
   const dispEl = document.getElementById('cap-saturacion-display');
-  if(dispEl) dispEl.innerHTML = `Umbral GW→GLA = <strong style="color:var(--warn)">${fmt(umbral)} pl</strong> &nbsp;<span style="color:var(--text3)">(Cap. GW ${fmt(capGW)} pl + colchón ${fmt(sat)} pl)</span>`;
+  if(!dispEl) return;
+  const capGW  = (typeof cap === 'function') ? cap('gw') : 7573;
+  const umbralPorUbis = (typeof umbralGWporUbis === 'function') ? umbralGWporUbis(0.90) : null;
+  if(umbralPorUbis !== null) {
+    const gwUbis  = (typeof mData !== 'undefined' && mData) ? mData.filter(r=>r.zona==='GLASSWARE') : [];
+    const numUbis = gwUbis.length;
+    const ubisOcup= gwUbis.filter(r=>(window.sapUbis||{})[r.ubi]>0).length;
+    const plMedio = ubisOcup > 0 ? Math.round((typeof stockGWdeSAP==='function'?stockGWdeSAP():0)/ubisOcup) : 0;
+    dispEl.innerHTML = `Umbral GW→GLA = <strong style="color:var(--warn)">${fmt(umbralPorUbis)} pl</strong> &nbsp;<span style="color:var(--text3)">(90% × ${numUbis} ubis × ${fmt(plMedio)} pl/ubi — datos SAP)</span>`;
+  } else {
+    const umbral = Math.round(capGW * 0.90);
+    dispEl.innerHTML = `Umbral GW→GLA = <strong style="color:var(--warn)">${fmt(umbral)} pl</strong> &nbsp;<span style="color:var(--text3)">(90% × Cap. GW ${fmt(capGW)} pl — sin datos SAP)</span>`;
+  }
 }
 
 function cargarCapacidadesGuardadas() {
@@ -1962,11 +1967,7 @@ function cargarCapacidadesGuardadas() {
         const el = document.getElementById('cap-'+id);
         if(el && saved[id]) el.value = saved[id];
       });
-      // Restaurar colchón saturación GLA
-      if(saved.glaSaturacion) {
-        const satEl = document.getElementById('gla-saturacion');
-        if(satEl) satEl.value = saved.glaSaturacion;
-      }
+      // (glaSaturacion eliminado — umbral dinámico por % ubis)
     }
   } catch(e){}
   // Mostrar umbral real al arranque
@@ -2299,10 +2300,15 @@ function fvSimGLA() {
   // Umbral GLA basado en % ocupación por ubicaciones (lógica monomarca):
   // una ubi está llena con ≥1 pallet → el umbral es el stock al que se ocuparían TODAS las ubis GW.
   // Si no hay datos SAP, se usa la capacidad fija configurada.
-  const capMaestroGW  = (typeof capTotalUbis    === 'function') ? capTotalUbis('gw')    : null;
-  const capGW         = capMaestroGW !== null ? capMaestroGW : capGWFija;
+  // Umbral GLA: stock GW a partir del cual el exceso va a almacén externo
+  // Con datos SAP: 90% de ubis ocupadas × pl/ubi (lógica monomarca real)
+  // Sin datos SAP: capacidad fija configurada (cap-gw, por defecto 7573 pl)
+  // Umbral GLA al 90% de ocupación:
+  // Con SAP: 90% ubis GW × pl/ubi real (monomarca, dinámico)
+  // Sin SAP: 90% × capacidad GW configurada
   const umbralPorUbis = (typeof umbralGWporUbis === 'function') ? umbralGWporUbis(0.90) : null;
-  const umbralGLA     = umbralPorUbis !== null ? umbralPorUbis : capGW;
+  const capGW     = capGWFija;
+  const umbralGLA = umbralPorUbis !== null ? umbralPorUbis : Math.round(capGWFija * 0.90);
 
   // ── Ancla al mes actual ──
   // lastRealIdx = último mes con dato real AZQ que NO sea futuro.
