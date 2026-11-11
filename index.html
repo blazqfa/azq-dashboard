@@ -1539,6 +1539,20 @@ function renderAZQPage() {
     return {total, conStock, pct: conStock/total};
   }
 
+  // Capacidad libre real de una zona basada en Maestro + stock SAP por ubicación
+  // Devuelve la suma de capTotal de las ubicaciones SIN stock SAP en esa zona
+  function capLibreUbis(zoneId) {
+    if(!mData || mData.length===0 || !window.sapUbis) return null;
+    const zKey = {gw:'GLASSWARE', bloq:'PROV-BLOQ (GW)', bty:'BTY', ag:'AFTER GLASS / RF', emb:'EMBALAJE'}[zoneId];
+    if(!zKey) return null;
+    const maestroZona = mData.filter(r=>r.zona===zKey);
+    if(maestroZona.length===0) return null;
+    // Ubicaciones sin stock SAP → su capacidad está disponible
+    return maestroZona
+      .filter(r => !window.sapUbis[r.ubi] || window.sapUbis[r.ubi]===0)
+      .reduce((s,r) => s + (r.capTotal||0), 0);
+  }
+
   document.getElementById('tab-azq-resumen').innerHTML = `
     <table class="data-table">
       <thead><tr>
@@ -2258,12 +2272,20 @@ function fvSimGLA() {
 
   // Capacidad GLA usa SOLO zona Glassware (producto terminado GW)
   // Prov-Bloq, BTY, Embalaje, After Glass no se trasladan a GLA externo
-  const capGW = (typeof cap === 'function') ? cap('gw') : 7573;
+  const capGWFija = (typeof cap === 'function') ? cap('gw') : 7573;
+
+  // Si hay datos SAP por ubicación, usamos la capacidad real libre de GW
+  // (suma de capTotal de ubicaciones GW sin stock SAP = espacio disponible para absorber)
+  const capLibreGW = (typeof capLibreUbis === 'function') ? capLibreUbis('gw') : null;
+  const capGW = capLibreGW !== null ? capLibreGW : capGWFija;
 
   // Colchón de saturación configurable (defecto 2000 pl)
-  // Cuando stock GW en AZQ supera (capGW − colchón), el exceso va a GLA
+  // Con datos SAP: umbral = capacidad libre real (ya no hay colchón, la lib real es el límite)
+  // Sin datos SAP: umbral = capacidad fija + colchón clásico
   const saturacion = parseInt(document.getElementById('gla-saturacion')?.value) || 2000;
-  const umbralGLA  = capGW + saturacion;  // umbral = capacidad GW + colchón de saturación
+  const umbralGLA  = capLibreGW !== null ? capGW : capGWFija + saturacion;
+  // Indicador en UI de qué modo está usando
+  const _modoUbis = capLibreGW !== null;
 
   // ── Ancla al mes actual ──
   // lastRealIdx = último mes con dato real AZQ que NO sea futuro.
