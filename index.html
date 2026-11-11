@@ -734,6 +734,7 @@
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn" onclick="mAddModal()">+ Nueva</button>
+          <button class="btn" id="m-sync-btn" onclick="mSyncFromServer()" style="background:var(--accent-light);color:var(--accent);border-color:var(--accent)">&#9729; Sincronizar</button>
           <button class="btn btn-primary" onclick="mExport()">&#8595; Excel</button>
           <button class="btn btn-primary" onclick="mSave()">&#128190; Guardar</button>
         </div>
@@ -775,6 +776,9 @@
         </div>
         <div class="bulk-field"><label>Alturas:</label>
           <input id="mb-alt" type="number" min="1" max="10" placeholder="—" style="width:55px">
+        </div>
+        <div class="bulk-field" title="Palés a descontar en fórmula SUELO (deja vacío para usar el estándar: Simple=2, Doble=4)"><label>Descuento:</label>
+          <input id="mb-desc" type="number" min="0" placeholder="auto" style="width:60px">
         </div>
         <button class="btn btn-primary" style="font-size:12px;padding:5px 14px" onclick="mBulkApply()">&#10003; Aplicar a selección</button>
         <button class="btn btn-danger" style="font-size:12px;padding:5px 10px" onclick="mBulkClear()">&#10006; Cancelar</button>
@@ -1666,7 +1670,7 @@ function showPage(id) {
   document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
   if(id==='fabventa') setTimeout(renderFabVentas, 50);
   if(id==='azq') setTimeout(layoutPostRender, 50);
-  if(id==='maestro') setTimeout(()=>{mRenderZoneCards();mFilter();}, 50);
+  if(id==='maestro') setTimeout(()=>{mRenderZoneCards();mFilter();mSyncFromServer();}, 50);
   // Al abrir Configuración, mostrar los valores actuales de capacidades
   if(id==='upload') {
     ['gw','bloq','bty','ag','emb','gla'].forEach(k => {
@@ -4039,15 +4043,17 @@ function mInit(){
   catch(e){ mData=JSON.parse(JSON.stringify(M_INIT)); }
 }
 
-function mCap(base,alt,tipo,lado){
+function mCap(base,alt,tipo,lado,desc){
   base=+base||0; alt=+alt||0;
   if(tipo==='ESTANTERIA') return base*alt;
-  return Math.max(0, base*alt-(lado==='DOBLE'?4:2));
+  const d=(desc!==undefined&&desc!==null&&desc!=='')?+desc:(lado==='DOBLE'?4:2);
+  return Math.max(0, base*alt-d);
 }
-function mFml(tipo,lado,base,alt){
+function mFml(tipo,lado,base,alt,desc){
   base=+base||0; alt=+alt||0;
   if(tipo==='ESTANTERIA') return base+'x'+alt;
-  return '('+base+'x'+alt+')-('+( lado==='DOBLE'?4:2)+')';
+  const d=(desc!==undefined&&desc!==null&&desc!=='')?+desc:(lado==='DOBLE'?4:2);
+  return '('+base+'x'+alt+')-('+d+')';
 }
 
 const M_ZONE_COLORS = {
@@ -4066,7 +4072,7 @@ function mRenderZoneCards(){
   mData.forEach(r=>{
     if(!zonas[r.zona]) zonas[r.zona]={ubis:0,cap:0};
     zonas[r.zona].ubis++;
-    zonas[r.zona].cap += mCap(r.base,r.alturas,r.tipoUbi,r.ladoUbi);
+    zonas[r.zona].cap += mCap(r.base,r.alturas,r.tipoUbi,r.ladoUbi,r.descuento);
   });
   const order = ['GLASSWARE','BTY','AFTER GLASS / RF','EMBALAJE','PROV-BLOQ (GW)'];
   const labels = {'GLASSWARE':'Glassware','BTY':'Beauty','AFTER GLASS / RF':'After Glass / RF','EMBALAJE':'Embalaje','PROV-BLOQ (GW)':'Prov-Bloq (GW)'};
@@ -4118,8 +4124,8 @@ function mRenderTable(){
   if(!mFiltered.length){tb.innerHTML='<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--text3)">Sin resultados</td></tr>';return;}
   tb.innerHTML=mFiltered.map(r=>{
     const ri=mData.indexOf(r);
-    const c=mCap(r.base,r.alturas,r.tipoUbi,r.ladoUbi);
-    const f=mFml(r.tipoUbi,r.ladoUbi,r.base,r.alturas);
+    const c=mCap(r.base,r.alturas,r.tipoUbi,r.ladoUbi,r.descuento);
+    const f=mFml(r.tipoUbi,r.ladoUbi,r.base,r.alturas,r.descuento);
     const sel=mSelected.has(ri);
     return '<tr'+(sel?' class="m-sel"':'')+'>'+
       '<td class="m-check-cell"><input type="checkbox" class="m-row-cb"'+(sel?' checked':'')+' onchange="mToggleSel('+ri+',this.checked)"></td>'+
@@ -4177,7 +4183,10 @@ function mBulkApply(){
   const lado=document.getElementById('mb-lado').value;
   const base=document.getElementById('mb-base').value;
   const alt=document.getElementById('mb-alt').value;
-  if(!zona&&!tipo&&!lado&&!base&&!alt){ alert('Selecciona al menos un campo a modificar.'); return; }
+  const descEl=document.getElementById('mb-desc');
+  const desc=descEl?descEl.value:'';
+  const resetDesc=descEl&&desc===''&&descEl.dataset.clear==='1';
+  if(!zona&&!tipo&&!lado&&!base&&!alt&&desc===''){ alert('Selecciona al menos un campo a modificar.'); return; }
   const n=mSelected.size;
   if(!confirm('Aplicar cambios a '+n+' ubicacion'+(n!==1?'es':'')+'?')) return;
   mSelected.forEach(ri=>{
@@ -4188,7 +4197,8 @@ function mBulkApply(){
     if(lado) r.ladoUbi=lado;
     if(base) r.base=parseInt(base);
     if(alt)  r.alturas=parseInt(alt);
-    r.capTotal=mCap(r.base,r.alturas,r.tipoUbi,r.ladoUbi);
+    if(desc!=='') r.descuento=parseInt(desc);
+    r.capTotal=mCap(r.base,r.alturas,r.tipoUbi,r.ladoUbi,r.descuento);
   });
   mBulkClear();
   mFilter();
@@ -4197,13 +4207,13 @@ function mBulkApply(){
 function mBulkClear(){
   mSelected.clear();
   ['mb-zona','mb-tipo','mb-lado'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  ['mb-base','mb-alt'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['mb-base','mb-alt','mb-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   mUpdateBulkBar();
   mRenderTable();
 }
 
 function mUpdateStats(){
-  const tc=mFiltered.reduce((s,r)=>s+mCap(r.base,r.alturas,r.tipoUbi,r.ladoUbi),0);
+  const tc=mFiltered.reduce((s,r)=>s+mCap(r.base,r.alturas,r.tipoUbi,r.ladoUbi,r.descuento),0);
   const zs=[...new Set(mFiltered.map(r=>r.zona))];
   const zm={'GLASSWARE':'GW','BTY':'BTY','AFTER GLASS / RF':'AFTER G.','EMBALAJE':'EMB','PROV-BLOQ (GW)':'PROV'};
   const e=id=>document.getElementById(id);
@@ -4215,8 +4225,8 @@ function mUpdateStats(){
 
 function mIE(idx,field,val){
   mData[idx][field]=val;
-  if(['base','alturas','tipoUbi','ladoUbi'].includes(field))
-    mData[idx].capTotal=mCap(mData[idx].base,mData[idx].alturas,mData[idx].tipoUbi,mData[idx].ladoUbi);
+  if(['base','alturas','tipoUbi','ladoUbi','descuento'].includes(field))
+    mData[idx].capTotal=mCap(mData[idx].base,mData[idx].alturas,mData[idx].tipoUbi,mData[idx].ladoUbi,mData[idx].descuento);
   mFilter();
 }
 function mDel(idx){
@@ -4283,18 +4293,30 @@ function mSaveRow(){
   mCloseModal(); mFilter();
 }
 function mSave(){
-  try{
-    localStorage.setItem(M_DK,JSON.stringify(mData));
-    const e=document.getElementById('m-last-save');
-    if(e){
-      e.textContent='✅ Guardado a las '+new Date().toLocaleTimeString('es-ES');
-      e.style.color='var(--ok)';
-      e.style.fontWeight='700';
-    }
-    // Feedback visual en el botón
-    const btn=[...document.querySelectorAll('#page-maestro button')].find(b=>b.textContent.includes('Guardar'));
-    if(btn){ const orig=btn.textContent; btn.textContent='✅ Guardado'; btn.style.background='var(--ok)'; setTimeout(()=>{ btn.textContent=orig; btn.style.background=''; },2000); }
-  }catch(e){alert('Error al guardar: '+e.message);}
+  // 1. Guardar localmente (rápido, siempre)
+  try{localStorage.setItem(M_DK,JSON.stringify(mData));}catch(e){}
+  // 2. Feedback visual inmediato
+  const eLabel=document.getElementById('m-last-save');
+  const btn=[...document.querySelectorAll('#page-maestro button')].find(b=>b.textContent.includes('Guardar'));
+  if(btn){btn.textContent='⏳ Guardando...';btn.style.background='var(--warn)';btn.disabled=true;}
+  if(eLabel){eLabel.textContent='⏳ Guardando en servidor...';eLabel.style.color='var(--warn)';eLabel.style.fontWeight='700';}
+  // 3. Enviar al servidor
+  fetch(M_GAS,{
+    method:'POST',
+    body: JSON.stringify({action:'maestro', data:mData})
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    const ok=d&&d.ok;
+    const ts=new Date().toLocaleTimeString('es-ES');
+    if(eLabel){eLabel.textContent=(ok?'✅ Guardado servidor ':'⚠️ Solo local — ')+ts;eLabel.style.color=ok?'var(--ok)':'var(--warn)';}
+    if(btn){btn.textContent=ok?'✅ Guardado':'⚠️ Local';btn.style.background=ok?'var(--ok)':'var(--warn)';btn.disabled=false;setTimeout(()=>{btn.textContent='💾 Guardar';btn.style.background='';},3000);}
+  })
+  .catch(()=>{
+    const ts=new Date().toLocaleTimeString('es-ES');
+    if(eLabel){eLabel.textContent='⚠️ Sin conexión — guardado solo local '+ts;eLabel.style.color='var(--warn)';}
+    if(btn){btn.textContent='⚠️ Local';btn.style.background='var(--warn)';btn.disabled=false;setTimeout(()=>{btn.textContent='💾 Guardar';btn.style.background='';},3000);}
+  });
 }
 function mExport(){
   if(typeof XLSX==='undefined'){alert('Librería XLSX no disponible');return;}
@@ -4312,9 +4334,31 @@ function mExport(){
 document.getElementById('m-modal-bg')?.addEventListener('click',e=>{if(e.target===e.currentTarget)mCloseModal();});
 // Cargar datos en memoria al iniciar
 (function(){
+  // Carga: 1º localStorage (rápido), luego sincroniza con GAS en background
   try{ const s=localStorage.getItem(M_DK); mData=s?JSON.parse(s):JSON.parse(JSON.stringify(M_INIT)); }
   catch(e){ mData=JSON.parse(JSON.stringify(M_INIT)); }
 })();
+// Sincronización con Google Apps Script
+const M_GAS = 'https://script.google.com/macros/s/AKfycbx7K5iGcjcSmzhuKUXjzvVe5ObgRZDG0f5RjnF-JhQyKTylYCDqmwKOsVp0aOVv-D1Qjw/exec';
+function mSyncFromServer(){
+  const btn=document.getElementById('m-sync-btn');
+  if(btn){btn.textContent='⏳ Cargando...';btn.disabled=true;}
+  fetch(M_GAS+'?action=maestro')
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.ok && Array.isArray(d.maestro) && d.maestro.length>0){
+        mData=d.maestro;
+        try{localStorage.setItem(M_DK,JSON.stringify(mData));}catch(e){}
+        mFilter(); mRenderZoneCards();
+        if(btn){btn.textContent='☁ Sincronizado';setTimeout(()=>{btn.textContent='☁ Sincronizar';btn.disabled=false;},2000);}
+      } else {
+        if(btn){btn.textContent='☁ Sincronizar';btn.disabled=false;}
+      }
+    })
+    .catch(()=>{
+      if(btn){btn.textContent='☁ Sin conexión';setTimeout(()=>{btn.textContent='☁ Sincronizar';btn.disabled=false;},2000);}
+    });
+}
 </script>
 
 </body>
