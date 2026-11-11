@@ -2409,6 +2409,19 @@ function fvSimGLA() {
       if(azqStock < 0) azqStock = 0; // déficit real (sin stock en ningún lado)
     }
 
+    // 5. Repatriación proactiva: si AZQ tiene hueco libre Y hay stock en GLA → traer
+    //    Limitada a 1/3 del hueco disponible por mes (gradual, como en la operativa real
+    //    donde se recupera el material en viajes planificados).
+    //    Solo si no ha habido entradas a GLA este mes (no repatriar y enviar a la vez).
+    if(azqStock < umbralGLA && glaStk > 0 && entradasGLA === 0) {
+      const hueco = umbralGLA - azqStock;
+      const maxMes = Math.ceil(hueco / 3);   // gradual: máx 1/3 del hueco por mes
+      const repatriacion = Math.min(maxMes, glaStk);
+      salidasGLA  += repatriacion;
+      glaStk      -= repatriacion;
+      azqStock    += repatriacion;
+    }
+
     glaStk   = Math.max(0, glaStk);
     azqStock = Math.max(0, azqStock);
 
@@ -2891,8 +2904,8 @@ function renderFvExternoTable() {
     const sal  = s.salidasGLA;
     let estado = '', estadoColor = 'var(--text3)';
     if(entr > 0) { estado = `↑ AZQ lleno — ${fmt(entr)} pl salen a GLA`; estadoColor = 'var(--danger)'; }
-    else if(sal > 0) { estado = `↓ Traída a AZQ — ${fmt(sal)} pl de GLA`; estadoColor = 'var(--ok)'; }
-    else if(s.glaStock > 0) { estado = 'Stock GLA estático'; estadoColor = 'var(--accent)'; }
+    else if(sal > 0) { estado = `↓ Repatriación a AZQ — ${fmt(sal)} pl de GLA`; estadoColor = 'var(--ok)'; }
+    else if(s.glaStock > 0) { estado = 'GLA sin movimiento'; estadoColor = 'var(--accent)'; }
     else { estado = 'GLA vacío'; }
     return `<tr>
       <td style="font-weight:600">${m}</td>
