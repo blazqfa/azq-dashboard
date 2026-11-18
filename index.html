@@ -4064,7 +4064,7 @@ async function fetchAndInit() {
 
     progress(10, 'Conectando con Google Sheets...');
 
-    const res = await fetch(API_URL + '?action=all');
+    const res = await fetch(API_URL + '?action=all&t=' + Date.now());
     if(!res.ok) throw new Error('Error HTTP ' + res.status);
 
     progress(40, 'Procesando datos...');
@@ -4426,7 +4426,7 @@ async function fetchAndInit() {
 
     progress(10, 'Conectando con Google Sheets...');
 
-    const res = await fetch(API_URL + '?action=all');
+    const res = await fetch(API_URL + '?action=all&t=' + Date.now());
     if(!res.ok) throw new Error('Error HTTP ' + res.status);
 
     progress(40, 'Procesando datos...');
@@ -4834,7 +4834,7 @@ function mSave(){
   if(btn){btn.textContent='⏳ Guardando...';btn.style.background='var(--warn)';btn.disabled=true;}
   if(eLabel){eLabel.textContent='⏳ Guardando en servidor...';eLabel.style.color='var(--warn)';eLabel.style.fontWeight='700';}
   // 3. Enviar al servidor
-  fetch(M_GAS,{
+  fetch(M_GAS+'?t='+Date.now(),{
     method:'POST',
     body: JSON.stringify({action:'maestro', data:mData})
   })
@@ -4876,7 +4876,7 @@ const M_GAS = 'https://script.google.com/macros/s/AKfycbx7K5iGcjcSmzhuKUXjzvVe5O
 function mSyncFromServer(){
   const btn=document.getElementById('m-sync-btn');
   if(btn){btn.textContent='⏳ Cargando...';btn.disabled=true;}
-  fetch(M_GAS+'?action=maestro')
+  fetch(M_GAS+'?action=maestro&t='+Date.now())
     .then(r=>r.json())
     .then(d=>{
       if(d.ok && Array.isArray(d.maestro) && d.maestro.length>0){
