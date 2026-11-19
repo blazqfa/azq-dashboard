@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v20260616-10 -->
+<!-- v20261119-inv -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -253,6 +253,29 @@
   .api-error p { color:#4A5568;font-size:13px;line-height:1.5; }
   .api-error code { font-size:11px;background:#F4F5F7;padding:2px 6px;border-radius:4px;display:block;margin-top:8px;word-break:break-all; }
 
+  /* INVENTARIO */
+  #page-inventario .inv-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:18px}
+  #page-inventario .inv-bar p{margin:0;flex:1 1 280px;font-size:13px;color:var(--text2)}
+  #page-inventario .inv-msg{display:none;font-size:12px;padding:6px 10px;border-radius:6px;width:100%}
+  #page-inventario .inv-msg.show{display:block}
+  #page-inventario .inv-msg.ok{background:#E6F4EC;color:#1E7B4B}#page-inventario .inv-msg.err{background:#FBE9E7;color:#C0392B}#page-inventario .inv-msg.info{background:#E7EEF7;color:#1B4F91}
+  #page-inventario .inv-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:18px}
+  @media(max-width:900px){#page-inventario .inv-grid{grid-template-columns:1fr}}
+  #page-inventario .inv-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+  #page-inventario .inv-card h3{font-size:14px;margin:0 0 4px;color:#1B4F91}
+  #page-inventario .inv-card .inv-sub{font-size:12px;color:var(--text3);margin:0 0 10px}
+  #page-inventario .inv-row{display:grid;grid-template-columns:150px 1fr 120px;gap:8px;align-items:center;font-size:12px;margin:6px 0}
+  #page-inventario .inv-track{background:var(--bg);border-radius:4px;height:14px;overflow:hidden}
+  #page-inventario .inv-fill{height:100%;border-radius:4px}
+  #page-inventario .inv-n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  #page-inventario .inv-n small{font-weight:400;color:var(--text3)}
+  #page-inventario .inv-tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  #page-inventario .inv-tools input,#page-inventario .inv-tools select{padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text)}
+  #page-inventario .inv-scroll{overflow:auto;max-height:480px;border:1px solid var(--border);border-radius:8px}
+  #page-inventario .inv-scroll.small{max-height:340px}
+  #page-inventario .inv-pill{display:inline-block;font-size:11px;font-weight:700;border-radius:10px;padding:2px 8px}
+  #page-inventario .inv-pill.bad{background:#FBE9E7;color:#C0392B}#page-inventario .inv-pill.warn{background:#FFF4DC;color:#B7640A}#page-inventario .inv-pill.info{background:#E7EEF7;color:#1B4F91}#page-inventario .inv-pill.ok{background:#E6F4EC;color:#1E7B4B}
+  #page-inventario .inv-empty{color:var(--text3);padding:16px;text-align:center;font-size:13px}
   /* MAESTRO DE UBICACIONES */
   #page-maestro .m-toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;align-items:center}
   #page-maestro .m-toolbar input,#page-maestro .m-toolbar select{padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);min-width:130px;background:#fff}
@@ -355,6 +378,10 @@
       <div class="nav-item" onclick="showPage('analisis')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         Análisis
+      </div>
+      <div class="nav-item" onclick="showPage('inventario')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Inventario
       </div>
       <div class="nav-section" style="margin-top:12px">Configuración</div>
       <div class="nav-item" onclick="showPage('upload')">
@@ -748,6 +775,37 @@
     </div>
 
     <!-- UPLOAD PAGE -->
+    <!-- INVENTARIO -->
+    <div class="page" id="page-inventario">
+      <div class="inv-bar">
+        <p><b>Inventario cruzado con el Maestro de Ubicaciones.</b> Exporta de SAP la variante <b>INV_ALEX</b> (progreso de inventario) a Excel y súbela aquí. Inventariada = «Status de integridad» marcado en SAP. Se comparte con la web de pedidos pendientes.</p>
+        <input type="file" id="inv-file" accept=".xlsx,.xls" style="display:none" onchange="invSubir(this)">
+        <button class="btn btn-primary" onclick="document.getElementById('inv-file').click()">Subir INV_ALEX</button>
+        <button class="btn" onclick="invCargar()">Actualizar</button>
+        <button class="btn" onclick="invExcel()">Descargar Excel</button>
+        <div class="inv-msg" id="inv-msg" role="status"></div>
+      </div>
+      <div class="kpi-row" id="inv-kpis"></div>
+      <div class="inv-grid">
+        <div class="inv-card"><h3>Avance por zona</h3><p class="inv-sub" id="inv-sub">Ubicaciones del maestro con inventario contabilizado</p><div id="inv-zonas"></div></div>
+        <div class="inv-card"><h3>Evolución del % real</h3><p class="inv-sub">Un punto por cada subida de INV_ALEX</p><div id="inv-evo"></div></div>
+      </div>
+      <div class="inv-card">
+        <h3>Ubicaciones pendientes de inventariar</h3>
+        <p class="inv-sub">Ubicaciones reales del maestro que todavía no tienen inventario contabilizado en SAP</p>
+        <div class="inv-tools">
+          <input id="inv-q" type="search" placeholder="Buscar ubicación" aria-label="Buscar ubicación" oninput="invRenderPend()">
+          <select id="inv-fzona" aria-label="Filtrar por zona" onchange="invRenderPend()"><option value="">Todas las zonas</option></select>
+          <select id="inv-fest" aria-label="Filtrar por estado" onchange="invRenderPend()"><option value="">Todos los estados</option><option>Sin documento</option><option>Documento abierto</option><option>Contada sin contabilizar</option><option>No existe en SAP</option></select>
+        </div>
+        <div class="inv-scroll"><table class="data-table" id="inv-tpend"></table></div>
+      </div>
+      <div class="inv-grid">
+        <div class="inv-card"><h3>Sobran en SAP</h3><p class="inv-sub">Ubicaciones que tiene SAP y no existen en el maestro (no cuentan para el %)</p><div class="inv-scroll small"><table class="data-table" id="inv-tsobra"></table></div></div>
+        <div class="inv-card"><h3>Faltan en SAP</h3><p class="inv-sub">Ubicaciones del maestro que SAP no tiene con ese nombre</p><div class="inv-scroll small"><table class="data-table" id="inv-tfalta"></table></div></div>
+      </div>
+    </div>
+
     <!-- MAESTRO DE UBICACIONES -->
     <div class="page" id="page-maestro">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -1762,14 +1820,15 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const map = {overview:'Resumen general',azq:'Almacén AZQ',gla:'Almacén externo GLA',fabventa:'Fabricación vs Ventas',maestro:'Maestro de Ubicaciones',analisis:'Análisis',upload:'Configuración'};
+  const map = {overview:'Resumen general',azq:'Almacén AZQ',gla:'Almacén externo GLA',fabventa:'Fabricación vs Ventas',maestro:'Maestro de Ubicaciones',analisis:'Análisis',inventario:'Inventario',upload:'Configuración'};
   document.getElementById('topbar-title').textContent = map[id]||id;
-  const idx = ['overview','azq','gla','fabventa','maestro','upload'].indexOf(id);
+  const idx = ['overview','azq','gla','fabventa','maestro','analisis','inventario','upload'].indexOf(id);
   document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
   if(id==='fabventa') setTimeout(renderFabVentas, 50);
   if(id==='azq') setTimeout(layoutPostRender, 50);
   if(id==='maestro') setTimeout(()=>{mRenderZoneCards();mFilter();mSyncFromServer();}, 50);
   if(id==='analisis') setTimeout(()=>renderAnalisis(), 50);
+  if(id==='inventario') setTimeout(()=>{ if(typeof mInit==='function' && (!mData||!mData.length)) mInit(); invAbrir(); }, 50);
   // Al abrir Configuración, mostrar los valores actuales de capacidades
   if(id==='upload') {
     ['gw','bloq','bty','ag','emb','gla'].forEach(k => {
@@ -4894,5 +4953,130 @@ function mSyncFromServer(){
 }
 </script>
 
+<script>
+// ===== INVENTARIO (INV_ALEX cruzado con el Maestro de Ubicaciones) =====
+// Los datos se guardan en la misma hoja que la web de pedidos pendientes, así las dos webs ven el mismo inventario.
+const INV_API = 'https://script.google.com/macros/s/AKfycbwRYOKgk-x0dW0U10gr_YwBw6aNaFZPXpxPJ72J2eKkMFrN0M9gqrh47mlad1zI3QJk/exec';
+const INV_COLS = ['Ubicación','Tipo almacén','Número de doc.inv.','FeRecuentInvent','Status de inventario','Status de integridad'];
+let invDatos = null, invRes = null, invCargando = false, invCb = 0;
+const invEsc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function invMsg(t,k){const m=document.getElementById('inv-msg');if(!m)return;m.textContent=t||'';m.className='inv-msg'+(t?' show '+(k||'info'):'');}
+function invMaestro(){
+  const src=(typeof mData!=='undefined'&&mData&&mData.length)?mData:(typeof M_INIT!=='undefined'?M_INIT:[]);
+  return src.map(x=>({ubi:String(x.ubi).trim().toUpperCase(),zona:x.zona||'Sin zona'}));
+}
+function invFecha(v){if(Object.prototype.toString.call(v)==='[object Date]'&&!isNaN(v)){const z=new Date(v.getTime()+60000);return String(z.getDate()).padStart(2,'0')+'/'+String(z.getMonth()+1).padStart(2,'0')+'/'+z.getFullYear();}return String(v==null?'':v).trim();}
+function invFilas(rows){
+  const hi=rows.findIndex(r=>r.some(c=>/Status de integridad/i.test(String(c))));if(hi<0)return null;
+  const H=rows[hi].map(c=>String(c).trim());const idx=INV_COLS.map(k=>H.findIndex(h=>h.toLowerCase()===k.toLowerCase()));
+  const out=[INV_COLS];
+  for(const r of rows.slice(hi+1)){const u=String(r[idx[0]]==null?'':r[idx[0]]).trim();if(!u)continue;out.push(idx.map(i=>i<0?'':invFecha(r[i])));}
+  return out;
+}
+function invCruzar(filas,maestro){
+  if(!filas||filas.length<2||!maestro.length)return null;
+  const H=filas[0],I=k=>H.indexOf(k);
+  const iU=I('Ubicación'),iT=I('Tipo almacén'),iS=I('Status de inventario'),iX=I('Status de integridad'),iF=I('FeRecuentInvent'),iD=I('Número de doc.inv.');
+  const sap={};filas.slice(1).forEach(r=>{const u=String(r[iU]).trim().toUpperCase();if(u)sap[u]=r;});
+  const est=r=>!r?'No existe en SAP':String(r[iX]).trim()==='X'?'Inventariada':String(r[iS]).trim()==='ACTI'?'Documento abierto':String(r[iS]).trim()==='COUN'?'Contada sin contabilizar':'Sin documento';
+  const mset=new Set(maestro.map(m=>m.ubi));const zonas={};const pend=[];const falta=[];let hechas=0,sinDoc=0,enCurso=0;
+  maestro.forEach(m=>{const r=sap[m.ubi];const e=est(r);const z=m.zona;zonas[z]=zonas[z]||{total:0,hechas:0};zonas[z].total++;
+    if(e==='Inventariada'){hechas++;zonas[z].hechas++;}
+    else{if(e==='Sin documento')sinDoc++;if(e==='Documento abierto'||e==='Contada sin contabilizar')enCurso++;
+      pend.push({ubi:m.ubi,zona:z,estado:e,fecha:r?r[iF]:'',doc:r&&r[iD]!=='0'?r[iD]:''});}
+    if(!r){const alias=Object.keys(sap).find(k=>k!==m.ubi&&k.includes(m.ubi));falta.push({ubi:m.ubi,zona:z,alias:alias||''});}});
+  const sobra=Object.keys(sap).filter(u=>!mset.has(u)).sort().map(u=>({ubi:u,tipo:sap[u][iT],estado:est(sap[u])}));
+  const n=maestro.length;
+  return {maestro:n,hechas,pct:n?Math.round(hechas/n*1000)/10:0,pendientes:n-hechas,sinDoc,enCurso,soloSap:sobra.length,soloMaestro:falta.length,zonas,pend,sobra,falta};
+}
+// --- lectura de datos (fetch y, si el navegador lo bloquea, JSONP) ---
+async function invCargar(){
+  if(invCargando)return;invCargando=true;invMsg('Cargando inventario…','info');
+  const fin=d=>{invCargando=false;if(d&&d.ok){invDatos=d.inv||null;invMsg('');invRender();}else{invMsg('No se ha podido leer el inventario de la hoja de datos.','err');}};
+  try{const r=await fetch(INV_API+'?t='+Date.now(),{cache:'no-store',redirect:'follow'});const d=await r.json();fin(d);return;}catch(e){}
+  const cb='inv_cb'+(++invCb),s=document.createElement('script');
+  const to=setTimeout(()=>{delete window[cb];s.remove();fin(null);},20000);
+  window[cb]=d=>{clearTimeout(to);delete window[cb];s.remove();fin(d);};
+  s.onerror=()=>{clearTimeout(to);delete window[cb];s.remove();fin(null);};
+  s.src=INV_API+'?callback='+cb+'&t='+Date.now();document.body.appendChild(s);
+}
+// --- subida del Excel de INV_ALEX ---
+async function invSubir(input){
+  const f=input.files&&input.files[0];input.value='';if(!f)return;
+  try{
+    invMsg('Leyendo «'+f.name+'»…','info');
+    const wb=XLSX.read(new Uint8Array(await f.arrayBuffer()),{type:'array',cellDates:true});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''});
+    const filas=invFilas(rows);
+    if(!filas){invMsg('No encuentro la columna «Status de integridad» en «'+f.name+'». Exporta la variante INV_ALEX.','err');return;}
+    const c=invCruzar(filas,invMaestro());
+    const resumen={maestro:c.maestro,hechas:c.hechas,pct:c.pct,pendientes:c.pendientes,sinDoc:c.sinDoc,enCurso:c.enCurso,soloSap:c.soloSap,soloMaestro:c.soloMaestro,
+      zonas:Object.fromEntries(Object.entries(c.zonas).map(([k,v])=>[k,Math.round(v.hechas/v.total*1000)/10]))};
+    invMsg('Subiendo inventario ('+(filas.length-1)+' ubicaciones de SAP)…','info');
+    await fetch(INV_API,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({tipo:'INV',filas,resumen})});
+    invDatos=Object.assign({},invDatos||{},{filas,subido:'ahora mismo'});invRender();
+    invMsg('Inventario subido: '+c.pct.toLocaleString('es-ES')+' % real sobre '+c.maestro+' ubicaciones del maestro.','ok');
+    setTimeout(invCargar,3000);
+  }catch(e){invMsg('No se ha podido subir «'+f.name+'»: '+(e&&e.message||e),'err');}
+}
+// --- pintado ---
+const invPill=e=>'<span class="inv-pill '+({'Sin documento':'bad','No existe en SAP':'bad','Documento abierto':'warn','Contada sin contabilizar':'info'}[e]||'ok')+'">'+e+'</span>';
+const invCol=p=>p>=95?'#1E7B4B':p>=80?'#B7640A':'#C0392B';
+function invKpi(label,value,sub,p){const fill=Math.min(100,Math.max(0,p));
+  return '<div class="kpi-card" style="cursor:default"><div class="kpi-label">'+label+'</div><div class="kpi-value" style="color:'+invCol(p)+'">'+value+'</div><div class="kpi-sub">'+sub+'</div><div class="kpi-bar"><div class="kpi-bar-fill" style="width:'+fill+'%;background:'+invCol(p)+'"></div></div></div>';}
+function invRender(){
+  const box=document.getElementById('inv-kpis');if(!box)return;
+  const d=invDatos;
+  if(!d||!d.filas||d.filas.length<2){box.innerHTML='<div class="inv-empty" style="grid-column:1/-1">Todavía no hay inventario. Pulsa «Subir INV_ALEX» y elige el Excel exportado de SAP.</div>';
+    ['inv-zonas','inv-evo','inv-tpend','inv-tsobra','inv-tfalta'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});invRes=null;return;}
+  const m=invMaestro();const c=invCruzar(d.filas,m);invRes=c;
+  box.innerHTML=invKpi('Inventario real',c.pct.toLocaleString('es-ES')+' %',c.hechas+' de '+c.maestro+' ubicaciones del maestro',c.pct)+
+    invKpi('Pendientes',c.pendientes,c.sinDoc+' sin documento · '+c.enCurso+' en curso',c.pendientes?60:100)+
+    invKpi('Sobran en SAP',c.soloSap,'no están en el maestro',c.soloSap?0:100)+
+    invKpi('Faltan en SAP',c.soloMaestro,'del maestro sin ese nombre en SAP',c.soloMaestro?0:100);
+  const Z=Object.entries(c.zonas).sort((a,b)=>b[1].total-a[1].total);
+  document.getElementById('inv-zonas').innerHTML=Z.map(([z,v])=>{const p=v.total?v.hechas/v.total*100:0;
+    return '<div class="inv-row"><span>'+invEsc(z)+'</span><div class="inv-track"><div class="inv-fill" style="width:'+p+'%;background:'+invCol(p)+'"></div></div><span class="inv-n">'+p.toFixed(1).replace('.',',')+' % <small>('+v.hechas+'/'+v.total+')</small></span></div>';}).join('');
+  document.getElementById('inv-sub').textContent='Subido '+(d.subido||'—')+' · '+(d.filas.length-1)+' ubicaciones en el archivo de SAP · '+invMaestroFuente+': '+m.length+' ubicaciones';
+  const zs=document.getElementById('inv-fzona'),cur=zs.value;zs.innerHTML='<option value="">Todas las zonas</option>'+Z.map(([z])=>'<option'+(z===cur?' selected':'')+'>'+invEsc(z)+'</option>').join('');
+  invRenderPend();
+  document.getElementById('inv-tsobra').innerHTML='<thead><tr><th>Ubicación SAP</th><th>Tipo alm.</th><th>Estado</th></tr></thead><tbody>'+(c.sobra.length?c.sobra.map(r=>'<tr><td><b>'+invEsc(r.ubi)+'</b></td><td>'+invEsc(r.tipo)+'</td><td>'+invEsc(r.estado)+'</td></tr>').join(''):'<tr><td colspan="3" class="inv-empty">Ninguna</td></tr>')+'</tbody>';
+  document.getElementById('inv-tfalta').innerHTML='<thead><tr><th>Ubicación maestro</th><th>Zona</th><th>En SAP aparece como</th></tr></thead><tbody>'+(c.falta.length?c.falta.map(r=>'<tr><td><b>'+invEsc(r.ubi)+'</b></td><td>'+invEsc(r.zona)+'</td><td>'+invEsc(r.alias||'—')+'</td></tr>').join(''):'<tr><td colspan="3" class="inv-empty">Ninguna</td></tr>')+'</tbody>';
+  const L=(d.historico||[]).slice(-30),ev=document.getElementById('inv-evo');
+  if(L.length<2){ev.innerHTML='<div class="inv-empty">Aparecerá en cuanto haya dos subidas de INV_ALEX.</div>';}
+  else{const W=620,Hh=200,pl=36,pr=12,pt=12,pb=34;const x=i=>pl+i*(W-pl-pr)/(L.length-1),y=v=>pt+(Hh-pt-pb)*(1-v/100);
+    const fd=s=>s?s.slice(8,10)+'/'+s.slice(5,7):'';
+    let g='';for(let t=0;t<=100;t+=20)g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y(t)+'" y2="'+y(t)+'" stroke="#e5e7eb"/><text x="'+(pl-6)+'" y="'+(y(t)+4)+'" text-anchor="end" font-size="11" fill="#6b7280">'+t+'%</text>';
+    const ln=L.map((c,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(c.pct).toFixed(1)).join('');const step=Math.ceil(L.length/8);let xl='';
+    L.forEach((c,i)=>{if(i%step===0||i===L.length-1)xl+='<text x="'+x(i)+'" y="'+(Hh-14)+'" text-anchor="middle" font-size="11" fill="#6b7280">'+fd(c.fecha)+'</text><text x="'+x(i)+'" y="'+(Hh-2)+'" text-anchor="middle" font-size="11" fill="#6b7280">'+(c.hora||'')+'</text>';});
+    ev.innerHTML='<svg viewBox="0 0 '+W+' '+Hh+'" width="100%" role="img" aria-label="Evolución del porcentaje real de inventario">'+g+'<path d="'+ln+'" fill="none" stroke="#1B4F91" stroke-width="2.5"/><circle cx="'+x(L.length-1)+'" cy="'+y(L[L.length-1].pct)+'" r="4.5" fill="#1B4F91"/>'+xl+'</svg>';}
+}
+function invPendFiltradas(){if(!invRes)return[];const q=document.getElementById('inv-q').value.trim().toUpperCase(),z=document.getElementById('inv-fzona').value,e=document.getElementById('inv-fest').value;
+  return invRes.pend.filter(r=>(!q||r.ubi.includes(q))&&(!z||r.zona===z)&&(!e||r.estado===e)).sort((a,b)=>a.zona<b.zona?-1:a.zona>b.zona?1:a.ubi<b.ubi?-1:1);}
+function invRenderPend(){const R=invPendFiltradas();
+  document.getElementById('inv-tpend').innerHTML='<thead><tr><th>Ubicación</th><th>Zona</th><th>Estado en SAP</th><th>Último recuento</th><th>Doc. inventario</th></tr></thead><tbody>'+
+  (R.length?R.map(r=>'<tr><td><b>'+invEsc(r.ubi)+'</b></td><td>'+invEsc(r.zona)+'</td><td>'+invPill(r.estado)+'</td><td>'+invEsc(r.fecha||'—')+'</td><td>'+invEsc(r.doc||'—')+'</td></tr>').join(''):'<tr><td colspan="5" class="inv-empty">Ninguna ubicación pendiente con ese filtro</td></tr>')+'</tbody>';}
+function invExcel(){
+  if(!invRes){invMsg('Todavía no hay inventario.','err');return;}const c=invRes;
+  const wb=XLSX.utils.book_new();const add=(n,a)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(a),n);
+  add('Pendientes',[['Ubicación','Zona','Estado en SAP','Último recuento','Doc. inventario']].concat(invPendFiltradas().map(r=>[r.ubi,r.zona,r.estado,r.fecha,r.doc])));
+  add('Por zona',[['Zona','Ubicaciones maestro','Inventariadas','% real']].concat(Object.entries(c.zonas).map(([z,v])=>[z,v.total,v.hechas,Math.round(v.hechas/v.total*1000)/10])));
+  add('Sobran en SAP',[['Ubicación SAP','Tipo almacén','Estado']].concat(c.sobra.map(r=>[r.ubi,r.tipo,r.estado])));
+  add('Faltan en SAP',[['Ubicación maestro','Zona','En SAP aparece como']].concat(c.falta.map(r=>[r.ubi,r.zona,r.alias])));
+  const d=new Date();XLSX.writeFile(wb,'Inventario_AZQ_'+d.toISOString().slice(0,10)+'.xlsx');
+}
+// El maestro es el de la pestaña «Maestro de Ubi.»: se sincroniza con el servidor al abrir para usar siempre la última versión
+let invMaestroFuente='maestro de este navegador';
+async function invSyncMaestro(){
+  const local=()=>{try{return localStorage.getItem(M_DK)?'maestro guardado en este navegador':'maestro original de la web';}catch(e){return 'maestro de este navegador';}};
+  try{
+    if(typeof M_GAS==='undefined'){invMaestroFuente=local();return;}
+    const r=await fetch(M_GAS+'?action=maestro&t='+Date.now());const d=await r.json();
+    if(d&&d.ok&&Array.isArray(d.maestro)&&d.maestro.length){mData=d.maestro;try{localStorage.setItem(M_DK,JSON.stringify(mData));}catch(e){}invMaestroFuente='maestro sincronizado del servidor';}
+    else invMaestroFuente=local();
+  }catch(e){invMaestroFuente=local();}
+}
+async function invAbrir(){ invRender(); await invSyncMaestro(); if(!invDatos) await invCargar(); else invRender(); }
+</script>
 </body>
 </html>
