@@ -5048,7 +5048,7 @@ function invRender(){
   invRenderPend();
   document.getElementById('inv-tsobra').innerHTML='<thead><tr><th>Ubicación SAP</th><th>Tipo alm.</th><th>Estado</th></tr></thead><tbody>'+(c.sobra.length?c.sobra.map(r=>'<tr><td><b>'+invEsc(r.ubi)+'</b></td><td>'+invEsc(r.tipo)+'</td><td>'+invEsc(r.estado)+'</td></tr>').join(''):'<tr><td colspan="3" class="inv-empty">Ninguna</td></tr>')+'</tbody>';
   document.getElementById('inv-tfalta').innerHTML='<thead><tr><th>Ubicación maestro</th><th>Zona</th><th>En SAP aparece como</th></tr></thead><tbody>'+(c.falta.length?c.falta.map(r=>'<tr><td><b>'+invEsc(r.ubi)+'</b></td><td>'+invEsc(r.zona)+'</td><td>'+invEsc(r.alias||'—')+'</td></tr>').join(''):'<tr><td colspan="3" class="inv-empty">Ninguna</td></tr>')+'</tbody>';
-  const L=(d.historico||[]).slice(-30),ev=document.getElementById('inv-evo');
+  const L=(d.historico||[]).filter(h=>h&&h.hechas>0).slice(-30),ev=document.getElementById('inv-evo');
   if(L.length<2){ev.innerHTML='<div class="inv-empty">Aparecerá en cuanto haya dos subidas de INV_ALEX.</div>';}
   else{const W=620,Hh=200,pl=36,pr=12,pt=12,pb=34;const x=i=>pl+i*(W-pl-pr)/(L.length-1),y=v=>pt+(Hh-pt-pb)*(1-v/100);
     const fd=s=>s?s.slice(8,10)+'/'+s.slice(5,7):'';
