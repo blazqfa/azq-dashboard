@@ -4962,8 +4962,14 @@ let invDatos = null, invRes = null, invCargando = false, invCb = 0;
 const invEsc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function invMsg(t,k){const m=document.getElementById('inv-msg');if(!m)return;m.textContent=t||'';m.className='inv-msg'+(t?' show '+(k||'info'):'');}
 function invMaestro(){
-  const src=(typeof mData!=='undefined'&&mData&&mData.length)?mData:(typeof M_INIT!=='undefined'?M_INIT:[]);
-  return src.map(x=>({ubi:String(x.ubi).trim().toUpperCase(),zona:x.zona||'Sin zona'}));
+  const norm=a=>a.map(x=>({ubi:String(x.ubi).trim().toUpperCase(),zona:x.zona||'Sin zona'}));
+  const base=typeof M_INIT!=='undefined'?norm(M_INIT):[];
+  if(typeof mData==='undefined'||!mData||!mData.length)return base;
+  const m=norm(mData);
+  // Si el maestro sincronizado apenas comparte ubicaciones con el original, viene mal guardado: se usa el original
+  if(base.length){const bs=new Set(base.map(x=>x.ubi));const comunes=new Set(m.filter(x=>bs.has(x.ubi)).map(x=>x.ubi)).size;
+    if(comunes<bs.size*0.5){invMaestroFuente='maestro original de la web (el del servidor no tiene ubicaciones válidas)';return base;}}
+  const vistos=new Set();return m.filter(x=>x.ubi&&!vistos.has(x.ubi)&&vistos.add(x.ubi));
 }
 function invFecha(v){if(Object.prototype.toString.call(v)==='[object Date]'&&!isNaN(v)){const z=new Date(v.getTime()+60000);return String(z.getDate()).padStart(2,'0')+'/'+String(z.getMonth()+1).padStart(2,'0')+'/'+z.getFullYear();}return String(v==null?'':v).trim();}
 function invFilas(rows){
